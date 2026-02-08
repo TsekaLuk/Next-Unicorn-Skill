@@ -1,6 +1,6 @@
 {
-  "name": "analyze-and-recommend-third-party-optimizations",
-  "version": "0.1.0",
+  "name": "@nebutra/next-unicorn-skill",
+  "version": "1.0.0",
   "description": "SKILL that scans codebases and recommends replacing hand-rolled implementations with battle-tested third-party libraries",
   "type": "module",
   "main": "dist/index.js",
@@ -18,6 +18,7 @@
     "migration-planning",
     "mcp"
   ],
+  "author": "Nebutra",
   "license": "MIT",
   "dependencies": {
     "zod": "^3.23.0"
