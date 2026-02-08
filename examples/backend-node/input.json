@@ -1,0 +1,28 @@
+{
+  "projectMetadata": {
+    "repoPath": "./my-express-api",
+    "languages": ["typescript"],
+    "packageManagers": ["npm"],
+    "currentLibraries": {
+      "express": "4.18.2",
+      "typescript": "5.3.3",
+      "jsonwebtoken": "9.0.2",
+      "pg": "8.11.3",
+      "dotenv": "16.3.1",
+      "cors": "2.8.5"
+    }
+  },
+  "optimizationGoals": [
+    "Replace hand-rolled authentication with a mature auth library",
+    "Replace custom logging with structured logging",
+    "Replace manual input validation with a schema validation library",
+    "Improve observability with proper tracing and metrics",
+    "Replace custom rate limiting with a battle-tested solution"
+  ],
+  "constraints": {
+    "licenseAllowlist": ["MIT", "Apache-2.0", "ISC", "BSD-2-Clause", "BSD-3-Clause"],
+    "excludedLibraries": ["bunyan"],
+    "maxDependencyCount": 60
+  },
+  "priorityFocusAreas": ["auth-security", "observability"]
+}

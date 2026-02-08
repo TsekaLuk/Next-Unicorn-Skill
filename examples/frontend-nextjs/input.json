@@ -1,0 +1,37 @@
+{
+  "projectMetadata": {
+    "repoPath": "./my-nextjs-app",
+    "languages": ["typescript", "javascript"],
+    "packageManagers": ["pnpm"],
+    "currentLibraries": {
+      "react": "18.2.0",
+      "react-dom": "18.2.0",
+      "next": "14.1.0",
+      "tailwindcss": "3.4.1",
+      "typescript": "5.3.3",
+      "zod": "3.22.4"
+    }
+  },
+  "optimizationGoals": [
+    "Replace hand-rolled i18n with a mature internationalization library",
+    "Replace custom date formatting utilities with a standard library",
+    "Improve accessibility coverage across all components",
+    "Add structured SEO metadata management",
+    "Replace custom analytics tracking with a unified solution"
+  ],
+  "constraints": {
+    "licenseAllowlist": ["MIT", "Apache-2.0", "ISC", "BSD-2-Clause", "BSD-3-Clause"],
+    "excludedLibraries": ["moment"],
+    "maxDependencyCount": 80
+  },
+  "priorityFocusAreas": ["i18n", "seo", "ux-completeness"],
+  "impactWeights": {
+    "scalability": 0.15,
+    "performance": 0.15,
+    "security": 0.1,
+    "maintainability": 0.2,
+    "feature_richness": 0.15,
+    "ux": 0.15,
+    "ui_aesthetics": 0.1
+  }
+}

@@ -1,0 +1,301 @@
+{
+  "recommendedChanges": [
+    {
+      "currentImplementation": {
+        "filePath": "src/utils/i18n.ts",
+        "lineRange": { "start": 1, "end": 85 },
+        "patternCategory": "custom-i18n",
+        "confidenceScore": 0.92
+      },
+      "recommendedLibrary": {
+        "name": "next-intl",
+        "version": "3.9.0",
+        "license": "MIT",
+        "documentationUrl": "https://next-intl-docs.vercel.app"
+      },
+      "domain": "i18n",
+      "impactScores": {
+        "scalability": 9,
+        "performance": 8,
+        "security": 5,
+        "maintainability": 9,
+        "feature_richness": 10,
+        "ux": 8,
+        "ui_aesthetics": 6,
+        "composite": 8.1
+      },
+      "migrationRisk": "low",
+      "estimatedEffort": 12,
+      "verificationStatus": "verified",
+      "verificationNote": "Context7 confirmed next-intl supports App Router, RSC, and ICU message syntax"
+    },
+    {
+      "currentImplementation": {
+        "filePath": "src/utils/date-helpers.ts",
+        "lineRange": { "start": 1, "end": 120 },
+        "patternCategory": "custom-date-formatting",
+        "confidenceScore": 0.88
+      },
+      "recommendedLibrary": {
+        "name": "date-fns",
+        "version": "3.3.1",
+        "license": "MIT",
+        "documentationUrl": "https://date-fns.org/docs"
+      },
+      "domain": "i18n",
+      "impactScores": {
+        "scalability": 7,
+        "performance": 8,
+        "security": 5,
+        "maintainability": 9,
+        "feature_richness": 9,
+        "ux": 6,
+        "ui_aesthetics": 5,
+        "composite": 7.2
+      },
+      "migrationRisk": "low",
+      "estimatedEffort": 6,
+      "verificationStatus": "verified",
+      "verificationNote": "Context7 confirmed date-fns v3 supports tree-shaking and locale-aware formatting"
+    },
+    {
+      "currentImplementation": {
+        "filePath": "src/components/SEOHead.tsx",
+        "lineRange": { "start": 1, "end": 65 },
+        "patternCategory": "custom-seo-meta",
+        "confidenceScore": 0.85
+      },
+      "recommendedLibrary": {
+        "name": "next-seo",
+        "version": "6.4.0",
+        "license": "MIT",
+        "documentationUrl": "https://github.com/garmeeh/next-seo"
+      },
+      "domain": "seo",
+      "impactScores": {
+        "scalability": 7,
+        "performance": 6,
+        "security": 4,
+        "maintainability": 8,
+        "feature_richness": 9,
+        "ux": 5,
+        "ui_aesthetics": 4,
+        "composite": 6.4
+      },
+      "migrationRisk": "low",
+      "estimatedEffort": 4,
+      "verificationStatus": "verified",
+      "verificationNote": "Context7 confirmed next-seo supports JSON-LD, Open Graph, and Twitter cards"
+    },
+    {
+      "currentImplementation": {
+        "filePath": "src/lib/analytics.ts",
+        "lineRange": { "start": 1, "end": 95 },
+        "patternCategory": "custom-analytics",
+        "confidenceScore": 0.78
+      },
+      "recommendedLibrary": {
+        "name": "posthog-js",
+        "version": "1.96.0",
+        "license": "MIT",
+        "documentationUrl": "https://posthog.com/docs"
+      },
+      "domain": "growth-hacking",
+      "impactScores": {
+        "scalability": 9,
+        "performance": 7,
+        "security": 7,
+        "maintainability": 8,
+        "feature_richness": 10,
+        "ux": 6,
+        "ui_aesthetics": 4,
+        "composite": 7.4
+      },
+      "migrationRisk": "medium",
+      "estimatedEffort": 16,
+      "adapterStrategy": {
+        "wrapperInterface": "AnalyticsProvider",
+        "legacyCode": "src/lib/analytics.ts",
+        "targetLibrary": "posthog-js",
+        "description": "Create an AnalyticsProvider wrapper that abstracts the tracking API, allowing gradual migration from custom analytics to PostHog"
+      },
+      "verificationStatus": "verified",
+      "verificationNote": "Context7 confirmed posthog-js supports event tracking, feature flags, and session recording"
+    },
+    {
+      "currentImplementation": {
+        "filePath": "src/components/ui/FormField.tsx",
+        "lineRange": { "start": 15, "end": 90 },
+        "patternCategory": "custom-form-validation",
+        "confidenceScore": 0.82
+      },
+      "recommendedLibrary": {
+        "name": "react-hook-form",
+        "version": "7.49.3",
+        "license": "MIT",
+        "documentationUrl": "https://react-hook-form.com"
+      },
+      "domain": "ux-completeness",
+      "impactScores": {
+        "scalability": 7,
+        "performance": 9,
+        "security": 6,
+        "maintainability": 8,
+        "feature_richness": 9,
+        "ux": 9,
+        "ui_aesthetics": 6,
+        "composite": 7.9
+      },
+      "migrationRisk": "medium",
+      "estimatedEffort": 20,
+      "adapterStrategy": {
+        "wrapperInterface": "FormWrapper",
+        "legacyCode": "src/components/ui/FormField.tsx",
+        "targetLibrary": "react-hook-form",
+        "description": "Create a FormWrapper component that provides the same props API while delegating to react-hook-form internally"
+      },
+      "verificationStatus": "verified",
+      "verificationNote": "Context7 confirmed react-hook-form supports Zod resolver integration and uncontrolled components"
+    }
+  ],
+  "filesToDelete": [
+    "src/utils/i18n.ts",
+    "src/utils/date-helpers.ts",
+    "src/components/SEOHead.tsx",
+    "src/lib/analytics.ts",
+    "src/components/ui/FormField.tsx"
+  ],
+  "linesSavedEstimate": 455,
+  "uxAudit": [
+    {
+      "category": "accessibility",
+      "status": "partial",
+      "filePaths": ["src/components/ui/Button.tsx", "src/components/ui/Modal.tsx"],
+      "recommendedLibrary": "react-aria",
+      "rationale": "Some components lack ARIA attributes and keyboard navigation support. react-aria provides accessible primitives with built-in ARIA patterns."
+    },
+    {
+      "category": "error-states",
+      "status": "partial",
+      "filePaths": ["src/app/error.tsx"],
+      "recommendedLibrary": "react-error-boundary",
+      "rationale": "Only a global error boundary exists. Individual component error boundaries are missing. react-error-boundary provides granular error handling with retry support."
+    },
+    {
+      "category": "empty-states",
+      "status": "missing",
+      "filePaths": [],
+      "recommendedLibrary": "react-content-loader",
+      "rationale": "No empty state components found. Lists and data views should show meaningful empty states. react-content-loader provides customizable placeholder illustrations."
+    },
+    {
+      "category": "loading-states",
+      "status": "partial",
+      "filePaths": ["src/components/ui/Spinner.tsx"],
+      "recommendedLibrary": "react-loading-skeleton",
+      "rationale": "Only a basic spinner exists. Skeleton loading states improve perceived performance. react-loading-skeleton provides animated skeleton placeholders."
+    },
+    {
+      "category": "form-validation",
+      "status": "partial",
+      "filePaths": ["src/components/ui/FormField.tsx"],
+      "recommendedLibrary": "react-hook-form",
+      "rationale": "Custom form validation lacks consistent error display and field-level validation. react-hook-form with Zod resolver provides declarative validation with excellent UX."
+    },
+    {
+      "category": "performance-feel",
+      "status": "missing",
+      "filePaths": [],
+      "recommendedLibrary": "framer-motion",
+      "rationale": "No transition animations or optimistic updates detected. framer-motion provides layout animations and exit transitions that improve perceived performance."
+    },
+    {
+      "category": "copy-consistency",
+      "status": "missing",
+      "filePaths": [],
+      "recommendedLibrary": "next-intl",
+      "rationale": "Hardcoded strings found across components. No centralized copy management. next-intl provides message catalogs with type-safe access."
+    },
+    {
+      "category": "design-system-alignment",
+      "status": "present",
+      "filePaths": ["src/components/ui/Button.tsx", "src/components/ui/Card.tsx", "src/components/ui/Input.tsx"],
+      "rationale": "Tailwind CSS with consistent component patterns detected. Design system alignment is adequate."
+    }
+  ],
+  "migrationPlan": {
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Quick Wins — Low Risk",
+        "steps": [
+          {
+            "recommendationIndex": 0,
+            "description": "Replace custom i18n utility (src/utils/i18n.ts) with next-intl. Set up message files, configure middleware, and update all t() call sites."
+          },
+          {
+            "recommendationIndex": 1,
+            "description": "Replace custom date formatting (src/utils/date-helpers.ts) with date-fns. Update all date formatting call sites to use date-fns format functions."
+          },
+          {
+            "recommendationIndex": 2,
+            "description": "Replace custom SEO component (src/components/SEOHead.tsx) with next-seo. Configure default SEO and per-page overrides."
+          }
+        ]
+      },
+      {
+        "phase": 2,
+        "name": "Moderate Refactoring — Medium Risk",
+        "steps": [
+          {
+            "recommendationIndex": 3,
+            "description": "Migrate custom analytics (src/lib/analytics.ts) to PostHog via AnalyticsProvider adapter. Gradually replace direct tracking calls.",
+            "adapterStrategy": {
+              "wrapperInterface": "AnalyticsProvider",
+              "legacyCode": "src/lib/analytics.ts",
+              "targetLibrary": "posthog-js",
+              "description": "Create an AnalyticsProvider wrapper that abstracts the tracking API, allowing gradual migration from custom analytics to PostHog"
+            }
+          },
+          {
+            "recommendationIndex": 4,
+            "description": "Migrate custom form validation (src/components/ui/FormField.tsx) to react-hook-form via FormWrapper adapter. Update forms one at a time.",
+            "adapterStrategy": {
+              "wrapperInterface": "FormWrapper",
+              "legacyCode": "src/components/ui/FormField.tsx",
+              "targetLibrary": "react-hook-form",
+              "description": "Create a FormWrapper component that provides the same props API while delegating to react-hook-form internally"
+            }
+          }
+        ]
+      }
+    ],
+    "deletionChecklist": [
+      {
+        "filePath": "src/utils/i18n.ts",
+        "lineRange": { "start": 1, "end": 85 },
+        "reason": "Replaced by next-intl — custom translation function and locale map no longer needed"
+      },
+      {
+        "filePath": "src/utils/date-helpers.ts",
+        "lineRange": { "start": 1, "end": 120 },
+        "reason": "Replaced by date-fns — custom date formatting utilities no longer needed"
+      },
+      {
+        "filePath": "src/components/SEOHead.tsx",
+        "lineRange": { "start": 1, "end": 65 },
+        "reason": "Replaced by next-seo — custom SEO head component no longer needed"
+      },
+      {
+        "filePath": "src/lib/analytics.ts",
+        "lineRange": { "start": 1, "end": 95 },
+        "reason": "Replaced by posthog-js — custom analytics tracking no longer needed after adapter migration"
+      },
+      {
+        "filePath": "src/components/ui/FormField.tsx",
+        "lineRange": { "start": 15, "end": 90 },
+        "reason": "Replaced by react-hook-form — custom form validation logic no longer needed after adapter migration"
+      }
+    ]
+  }
+}

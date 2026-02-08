@@ -1,0 +1,342 @@
+{
+  "recommendedChanges": [
+    {
+      "currentImplementation": {
+        "filePath": "src/middleware/auth.ts",
+        "lineRange": { "start": 1, "end": 110 },
+        "patternCategory": "custom-auth",
+        "confidenceScore": 0.91
+      },
+      "recommendedLibrary": {
+        "name": "passport",
+        "version": "0.7.0",
+        "license": "MIT",
+        "documentationUrl": "https://www.passportjs.org/docs/"
+      },
+      "domain": "auth-security",
+      "impactScores": {
+        "scalability": 8,
+        "performance": 7,
+        "security": 10,
+        "maintainability": 9,
+        "feature_richness": 9,
+        "ux": 5,
+        "ui_aesthetics": 3,
+        "composite": 7.3
+      },
+      "migrationRisk": "high",
+      "estimatedEffort": 24,
+      "adapterStrategy": {
+        "wrapperInterface": "AuthMiddleware",
+        "legacyCode": "src/middleware/auth.ts",
+        "targetLibrary": "passport",
+        "description": "Create an AuthMiddleware wrapper that maintains the existing req.user interface while delegating to Passport strategies internally, allowing route-by-route migration"
+      },
+      "verificationStatus": "verified",
+      "verificationNote": "Context7 confirmed passport supports JWT, OAuth2, local strategies, and Express middleware integration"
+    },
+    {
+      "currentImplementation": {
+        "filePath": "src/utils/logger.ts",
+        "lineRange": { "start": 1, "end": 75 },
+        "patternCategory": "custom-logging",
+        "confidenceScore": 0.94
+      },
+      "recommendedLibrary": {
+        "name": "pino",
+        "version": "8.17.2",
+        "license": "MIT",
+        "documentationUrl": "https://getpino.io/#/docs/api"
+      },
+      "domain": "observability",
+      "impactScores": {
+        "scalability": 8,
+        "performance": 10,
+        "security": 7,
+        "maintainability": 9,
+        "feature_richness": 9,
+        "ux": 4,
+        "ui_aesthetics": 3,
+        "composite": 7.1
+      },
+      "migrationRisk": "low",
+      "estimatedEffort": 6,
+      "verificationStatus": "verified",
+      "verificationNote": "Context7 confirmed pino supports structured JSON logging, log levels, redaction, child loggers, and pino-pretty transport"
+    },
+    {
+      "currentImplementation": {
+        "filePath": "src/middleware/validate.ts",
+        "lineRange": { "start": 1, "end": 90 },
+        "patternCategory": "custom-validation",
+        "confidenceScore": 0.87
+      },
+      "recommendedLibrary": {
+        "name": "zod",
+        "version": "3.22.4",
+        "license": "MIT",
+        "documentationUrl": "https://zod.dev"
+      },
+      "domain": "auth-security",
+      "impactScores": {
+        "scalability": 7,
+        "performance": 8,
+        "security": 9,
+        "maintainability": 10,
+        "feature_richness": 9,
+        "ux": 6,
+        "ui_aesthetics": 3,
+        "composite": 7.4
+      },
+      "migrationRisk": "low",
+      "estimatedEffort": 8,
+      "verificationStatus": "verified",
+      "verificationNote": "Context7 confirmed zod supports schema inference, transform pipelines, and Express middleware integration"
+    },
+    {
+      "currentImplementation": {
+        "filePath": "src/utils/rate-limiter.ts",
+        "lineRange": { "start": 1, "end": 60 },
+        "patternCategory": "custom-rate-limiting",
+        "confidenceScore": 0.83
+      },
+      "recommendedLibrary": {
+        "name": "express-rate-limit",
+        "version": "7.1.5",
+        "license": "MIT",
+        "documentationUrl": "https://github.com/express-rate-limit/express-rate-limit"
+      },
+      "domain": "auth-security",
+      "impactScores": {
+        "scalability": 9,
+        "performance": 8,
+        "security": 9,
+        "maintainability": 8,
+        "feature_richness": 8,
+        "ux": 5,
+        "ui_aesthetics": 3,
+        "composite": 7.1
+      },
+      "migrationRisk": "low",
+      "estimatedEffort": 4,
+      "verificationStatus": "verified",
+      "verificationNote": "Context7 confirmed express-rate-limit supports Redis store, sliding window, and per-route configuration"
+    },
+    {
+      "currentImplementation": {
+        "filePath": "src/utils/tracing.ts",
+        "lineRange": { "start": 1, "end": 130 },
+        "patternCategory": "custom-tracing",
+        "confidenceScore": 0.79
+      },
+      "recommendedLibrary": {
+        "name": "@opentelemetry/sdk-node",
+        "version": "0.48.0",
+        "license": "Apache-2.0",
+        "documentationUrl": "https://opentelemetry.io/docs/languages/js/"
+      },
+      "domain": "observability",
+      "impactScores": {
+        "scalability": 10,
+        "performance": 7,
+        "security": 6,
+        "maintainability": 8,
+        "feature_richness": 10,
+        "ux": 4,
+        "ui_aesthetics": 3,
+        "composite": 6.9
+      },
+      "migrationRisk": "medium",
+      "estimatedEffort": 16,
+      "adapterStrategy": {
+        "wrapperInterface": "TracingProvider",
+        "legacyCode": "src/utils/tracing.ts",
+        "targetLibrary": "@opentelemetry/sdk-node",
+        "description": "Create a TracingProvider wrapper that exposes the existing span/trace API while delegating to OpenTelemetry SDK internally"
+      },
+      "verificationStatus": "verified",
+      "verificationNote": "Context7 confirmed @opentelemetry/sdk-node supports auto-instrumentation for Express, pg, and HTTP"
+    },
+    {
+      "currentImplementation": {
+        "filePath": "src/utils/error-handler.ts",
+        "lineRange": { "start": 1, "end": 55 },
+        "patternCategory": "custom-error-tracking",
+        "confidenceScore": 0.76
+      },
+      "recommendedLibrary": {
+        "name": "@sentry/node",
+        "version": "7.93.0",
+        "license": "MIT",
+        "documentationUrl": "https://docs.sentry.io/platforms/node/"
+      },
+      "domain": "observability",
+      "impactScores": {
+        "scalability": 8,
+        "performance": 7,
+        "security": 7,
+        "maintainability": 8,
+        "feature_richness": 10,
+        "ux": 5,
+        "ui_aesthetics": 3,
+        "composite": 6.9
+      },
+      "migrationRisk": "low",
+      "estimatedEffort": 6,
+      "verificationStatus": "verified",
+      "verificationNote": "Context7 confirmed @sentry/node supports Express integration, source maps, breadcrumbs, and performance monitoring"
+    }
+  ],
+  "filesToDelete": [
+    "src/middleware/auth.ts",
+    "src/utils/logger.ts",
+    "src/middleware/validate.ts",
+    "src/utils/rate-limiter.ts",
+    "src/utils/tracing.ts",
+    "src/utils/error-handler.ts"
+  ],
+  "linesSavedEstimate": 520,
+  "uxAudit": [
+    {
+      "category": "accessibility",
+      "status": "present",
+      "filePaths": [],
+      "rationale": "Backend API — accessibility is not applicable to server-side code. API responses use standard HTTP status codes and structured error bodies."
+    },
+    {
+      "category": "error-states",
+      "status": "partial",
+      "filePaths": ["src/utils/error-handler.ts", "src/middleware/error.ts"],
+      "recommendedLibrary": "@sentry/node",
+      "rationale": "Custom error handler exists but lacks structured error tracking, alerting, and breadcrumb context. @sentry/node provides comprehensive error monitoring."
+    },
+    {
+      "category": "empty-states",
+      "status": "present",
+      "filePaths": [],
+      "rationale": "Backend API — empty states handled via standard HTTP 204 and empty array responses."
+    },
+    {
+      "category": "loading-states",
+      "status": "present",
+      "filePaths": [],
+      "rationale": "Backend API — loading states are not applicable. Request timeouts and streaming responses are handled at the HTTP layer."
+    },
+    {
+      "category": "form-validation",
+      "status": "partial",
+      "filePaths": ["src/middleware/validate.ts"],
+      "recommendedLibrary": "zod",
+      "rationale": "Custom validation middleware exists but lacks type inference and consistent error formatting. Zod provides schema-first validation with TypeScript type inference."
+    },
+    {
+      "category": "performance-feel",
+      "status": "partial",
+      "filePaths": ["src/utils/tracing.ts"],
+      "recommendedLibrary": "@opentelemetry/sdk-node",
+      "rationale": "Custom tracing exists but lacks distributed trace context propagation and auto-instrumentation. OpenTelemetry provides vendor-neutral observability."
+    },
+    {
+      "category": "copy-consistency",
+      "status": "present",
+      "filePaths": [],
+      "rationale": "Backend API — copy consistency is handled via structured JSON responses with consistent field naming conventions."
+    },
+    {
+      "category": "design-system-alignment",
+      "status": "present",
+      "filePaths": [],
+      "rationale": "Backend API — design system alignment is not applicable. API follows RESTful conventions with consistent response structure."
+    }
+  ],
+  "migrationPlan": {
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Quick Wins — Low Risk",
+        "steps": [
+          {
+            "recommendationIndex": 1,
+            "description": "Replace custom logger (src/utils/logger.ts) with pino. Configure structured JSON output, log levels, and redaction for sensitive fields."
+          },
+          {
+            "recommendationIndex": 2,
+            "description": "Replace custom validation middleware (src/middleware/validate.ts) with Zod schemas. Create per-route schemas and a generic validation middleware."
+          },
+          {
+            "recommendationIndex": 3,
+            "description": "Replace custom rate limiter (src/utils/rate-limiter.ts) with express-rate-limit. Configure per-route limits and Redis store for distributed deployments."
+          },
+          {
+            "recommendationIndex": 5,
+            "description": "Replace custom error handler (src/utils/error-handler.ts) with @sentry/node. Configure Express integration, source maps, and environment tagging."
+          }
+        ]
+      },
+      {
+        "phase": 2,
+        "name": "Moderate Refactoring — Medium Risk",
+        "steps": [
+          {
+            "recommendationIndex": 4,
+            "description": "Migrate custom tracing (src/utils/tracing.ts) to OpenTelemetry via TracingProvider adapter. Enable auto-instrumentation for Express and pg.",
+            "adapterStrategy": {
+              "wrapperInterface": "TracingProvider",
+              "legacyCode": "src/utils/tracing.ts",
+              "targetLibrary": "@opentelemetry/sdk-node",
+              "description": "Create a TracingProvider wrapper that exposes the existing span/trace API while delegating to OpenTelemetry SDK internally"
+            }
+          }
+        ]
+      },
+      {
+        "phase": 3,
+        "name": "High Risk — Adapter Strategy Required",
+        "steps": [
+          {
+            "recommendationIndex": 0,
+            "description": "Migrate custom auth middleware (src/middleware/auth.ts) to Passport via AuthMiddleware adapter. Migrate route-by-route, starting with least-critical endpoints.",
+            "adapterStrategy": {
+              "wrapperInterface": "AuthMiddleware",
+              "legacyCode": "src/middleware/auth.ts",
+              "targetLibrary": "passport",
+              "description": "Create an AuthMiddleware wrapper that maintains the existing req.user interface while delegating to Passport strategies internally, allowing route-by-route migration"
+            }
+          }
+        ]
+      }
+    ],
+    "deletionChecklist": [
+      {
+        "filePath": "src/middleware/auth.ts",
+        "lineRange": { "start": 1, "end": 110 },
+        "reason": "Replaced by passport — custom JWT verification, session handling, and role checking no longer needed"
+      },
+      {
+        "filePath": "src/utils/logger.ts",
+        "lineRange": { "start": 1, "end": 75 },
+        "reason": "Replaced by pino — custom console.log wrapper and manual JSON formatting no longer needed"
+      },
+      {
+        "filePath": "src/middleware/validate.ts",
+        "lineRange": { "start": 1, "end": 90 },
+        "reason": "Replaced by zod — custom request body validation and type coercion no longer needed"
+      },
+      {
+        "filePath": "src/utils/rate-limiter.ts",
+        "lineRange": { "start": 1, "end": 60 },
+        "reason": "Replaced by express-rate-limit — custom in-memory rate limiting with manual cleanup no longer needed"
+      },
+      {
+        "filePath": "src/utils/tracing.ts",
+        "lineRange": { "start": 1, "end": 130 },
+        "reason": "Replaced by @opentelemetry/sdk-node — custom span tracking and context propagation no longer needed"
+      },
+      {
+        "filePath": "src/utils/error-handler.ts",
+        "lineRange": { "start": 1, "end": 55 },
+        "reason": "Replaced by @sentry/node — custom error logging and notification no longer needed"
+      }
+    ]
+  }
+}
