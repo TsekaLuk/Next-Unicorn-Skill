@@ -110,6 +110,15 @@ const deletionChecklistItemArb = fc.record({
   ),
   reason: safeString,
 });
+const warningSeverityArb = fc.constantFrom('conflict' as const, 'missing' as const, 'compatible' as const);
+
+const peerDependencyWarningArb = fc.record({
+  recommendedLibrary: safeString,
+  peerDependency: safeString,
+  requiredRange: safeString,
+  installedVersion: fc.option(safeString, { nil: null }),
+  severity: warningSeverityArb,
+});
 
 const outputSchemaArb = fc.record({
   recommendedChanges: fc.array(recommendedChangeArb, { minLength: 0, maxLength: 3 }),
@@ -119,6 +128,7 @@ const outputSchemaArb = fc.record({
   migrationPlan: fc.record({
     phases: fc.array(migrationPhaseArb, { minLength: 0, maxLength: 3 }),
     deletionChecklist: fc.array(deletionChecklistItemArb, { minLength: 0, maxLength: 5 }),
+    peerDependencyWarnings: fc.array(peerDependencyWarningArb, { minLength: 0, maxLength: 5 }),
   }),
 });
 
@@ -147,6 +157,56 @@ describe('Feature: next-unicorn, Property 1: Output_Schema JSON round-trip', () 
   });
 
   /** Validates: Requirements 7.3 */
+});
+
+// ---------------------------------------------------------------------------
+// Property 4: Output schema round-trip with peerDependencyWarnings
+// ---------------------------------------------------------------------------
+
+describe('Feature: peer-dependency-warnings, Property 4: Output schema round-trip with peerDependencyWarnings', () => {
+  it('serializing to JSON and deserializing produces a deeply equal object including peerDependencyWarnings', () => {
+    // Use an arbitrary that always generates at least one peerDependencyWarning
+    const outputWithWarningsArb = fc.record({
+      recommendedChanges: fc.array(recommendedChangeArb, { minLength: 0, maxLength: 3 }),
+      filesToDelete: fc.array(safeString, { minLength: 0, maxLength: 5 }),
+      linesSavedEstimate: fc.integer({ min: 0, max: 100000 }),
+      uxAudit: fc.array(uxAuditItemArb, { minLength: 0, maxLength: 4 }),
+      migrationPlan: fc.record({
+        phases: fc.array(migrationPhaseArb, { minLength: 0, maxLength: 3 }),
+        deletionChecklist: fc.array(deletionChecklistItemArb, { minLength: 0, maxLength: 5 }),
+        peerDependencyWarnings: fc.array(peerDependencyWarningArb, { minLength: 1, maxLength: 5 }),
+      }),
+    });
+
+    fc.assert(
+      fc.property(outputWithWarningsArb, (original) => {
+        // Validate the generated object against the Zod schema
+        const parsed = OutputSchema.parse(original);
+
+        // Serialize to JSON
+        const json = JSON.stringify(parsed);
+
+        // Deserialize and re-validate
+        const deserialized = OutputSchema.parse(JSON.parse(json));
+
+        // Assert deep equality — including peerDependencyWarnings
+        expect(deserialized).toEqual(parsed);
+
+        // Verify peerDependencyWarnings survived the round-trip
+        expect(deserialized.migrationPlan.peerDependencyWarnings.length).toBeGreaterThan(0);
+        for (const warning of deserialized.migrationPlan.peerDependencyWarnings) {
+          expect(['conflict', 'missing', 'compatible']).toContain(warning.severity);
+          expect(typeof warning.recommendedLibrary).toBe('string');
+          expect(typeof warning.peerDependency).toBe('string');
+          expect(typeof warning.requiredRange).toBe('string');
+          expect(warning.installedVersion === null || typeof warning.installedVersion === 'string').toBe(true);
+        }
+      }),
+      { numRuns: 100 },
+    );
+  });
+
+  /** Validates: Requirements 4.3 */
 });
 
 // ---------------------------------------------------------------------------
@@ -314,7 +374,7 @@ describe('Feature: next-unicorn, Property 3: Schema validation rejects invalid i
           filesToDelete: [],
           linesSavedEstimate: 0,
           uxAudit: [],
-          migrationPlan: { phases: [], deletionChecklist: [] },
+          migrationPlan: { phases: [], deletionChecklist: [], peerDependencyWarnings: [] },
         };
 
         // Set the field to a wrong type

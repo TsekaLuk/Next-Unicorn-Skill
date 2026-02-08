@@ -6,6 +6,7 @@ import { analyze, VERSION } from '../src/index.js';
 import type { Context7Client } from '../src/verifier/context7.js';
 import { OutputSchema } from '../src/schemas/output.schema.js';
 import type { InputSchema } from '../src/schemas/input.schema.js';
+import type { PeerDependencyResolver } from '../src/checker/peer-dependency-checker.js';
 
 // ---------------------------------------------------------------------------
 // Helpers — temporary directory management
@@ -77,7 +78,7 @@ afterEach(() => {
 
 describe('VERSION export', () => {
   it('still exports VERSION alongside the orchestrator', () => {
-    expect(VERSION).toBe('0.1.0');
+    expect(VERSION).toBe('2.0.0');
   });
 });
 
@@ -495,3 +496,111 @@ describe('analyze — serialization', () => {
     expect(validated.success).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Peer dependency warnings
+// ---------------------------------------------------------------------------
+
+describe('analyze — peer dependency warnings', () => {
+  it('includes warnings in output when peerDependencyResolver returns peer deps', async () => {
+    // Write files that trigger detections (i18n pattern → i18next recommendation)
+    writeFile('package.json', JSON.stringify({
+      name: 'test-app',
+      dependencies: { react: '^18.0.0' },
+    }));
+    writeFile('src/utils.ts', `
+      function formatCount(count: number) {
+        return count === 1 ? 'item' : 'items';
+      }
+    `);
+
+    // Mock resolver that returns peer deps for any library
+    const mockResolver: PeerDependencyResolver = {
+      resolve: async () => ({
+        react: '^18.0.0',
+        'react-dom': '^18.0.0',
+      }),
+    };
+
+    const result = await analyze({
+      input: makeValidInput({
+        projectMetadata: {
+          repoPath: tmpDir,
+          languages: ['typescript'],
+          packageManagers: ['npm'],
+          currentLibraries: {
+            react: '18.2.0',       // satisfies ^18.0.0 → compatible
+            // react-dom missing   → missing
+          },
+        },
+      }),
+      context7Client: makeMockContext7Client(),
+      peerDependencyResolver: mockResolver,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    // Should have recommendations (the files trigger detections)
+    expect(result.output.recommendedChanges.length).toBeGreaterThan(0);
+
+    // Should have peer dependency warnings in the migration plan
+    const warnings = result.output.migrationPlan.peerDependencyWarnings;
+    expect(warnings.length).toBeGreaterThan(0);
+
+    // Verify warning structure
+    for (const warning of warnings) {
+      expect(typeof warning.recommendedLibrary).toBe('string');
+      expect(typeof warning.peerDependency).toBe('string');
+      expect(typeof warning.requiredRange).toBe('string');
+      expect(['string', 'object'].includes(typeof warning.installedVersion)).toBe(true); // string or null
+      expect(['conflict', 'missing', 'compatible']).toContain(warning.severity);
+    }
+
+    // Verify specific expected warnings: react should be compatible, react-dom should be missing
+    const reactWarning = warnings.find((w) => w.peerDependency === 'react');
+    const reactDomWarning = warnings.find((w) => w.peerDependency === 'react-dom');
+
+    if (reactWarning) {
+      expect(reactWarning.severity).toBe('compatible');
+      expect(reactWarning.installedVersion).toBe('18.2.0');
+      expect(reactWarning.requiredRange).toBe('^18.0.0');
+    }
+
+    if (reactDomWarning) {
+      expect(reactDomWarning.severity).toBe('missing');
+      expect(reactDomWarning.installedVersion).toBeNull();
+      expect(reactDomWarning.requiredRange).toBe('^18.0.0');
+    }
+
+    // Output should still be valid against OutputSchema
+    const parsed = OutputSchema.safeParse(result.output);
+    expect(parsed.success).toBe(true);
+  });
+
+  it('returns empty peerDependencyWarnings when no resolver is provided', async () => {
+    // Write files that trigger detections
+    writeFile('src/utils.ts', `
+      function formatCount(count: number) {
+        return count === 1 ? 'item' : 'items';
+      }
+    `);
+
+    const result = await analyze({
+      input: makeValidInput(),
+      context7Client: makeMockContext7Client(),
+      // No peerDependencyResolver provided — should default to no-op
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    // peerDependencyWarnings should be an empty array
+    expect(result.output.migrationPlan.peerDependencyWarnings).toEqual([]);
+
+    // Output should still be valid against OutputSchema
+    const parsed = OutputSchema.safeParse(result.output);
+    expect(parsed.success).toBe(true);
+  });
+});
+

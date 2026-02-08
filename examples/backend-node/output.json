@@ -337,6 +337,7 @@
         "lineRange": { "start": 1, "end": 55 },
         "reason": "Replaced by @sentry/node — custom error logging and notification no longer needed"
       }
-    ]
+    ],
+    "peerDependencyWarnings": []
   }
 }

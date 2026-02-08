@@ -296,6 +296,7 @@
         "lineRange": { "start": 15, "end": 90 },
         "reason": "Replaced by react-hook-form — custom form validation logic no longer needed after adapter migration"
       }
-    ]
+    ],
+    "peerDependencyWarnings": []
   }
 }

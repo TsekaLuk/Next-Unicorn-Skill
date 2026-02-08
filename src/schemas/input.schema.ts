@@ -136,6 +136,41 @@ export const InputSchema = z.object({
       ui_aesthetics: z.number().min(0).max(1),
     })
     .optional(),
+
+  // -------------------------------------------------------------------------
+  // Phase 2: Auto-Update Policy
+  // -------------------------------------------------------------------------
+  updatePolicy: z
+    .object({
+      enabled: z.boolean().default(false),
+      defaultStrategy: z.enum(['patch', 'minor', 'major', 'all']).default('minor'),
+      packageOverrides: z
+        .record(z.string(), z.enum(['patch', 'minor', 'major', 'all']))
+        .default({}),
+      maxUpdates: z.number().int().positive().default(50),
+      minAgeDays: z.number().int().nonnegative().default(3),
+      groupRelatedPackages: z.boolean().default(true),
+      pinned: z.array(z.string()).default([]),
+    })
+    .optional(),
+
+  // -------------------------------------------------------------------------
+  // Phase 2: PR Auto-Creation Policy
+  // -------------------------------------------------------------------------
+  prPolicy: z
+    .object({
+      enabled: z.boolean().default(false),
+      maxOpenPRs: z.number().int().positive().default(10),
+      groupUpdates: z.boolean().default(true),
+      separateSecurityPRs: z.boolean().default(true),
+      createMigrationPRs: z.boolean().default(false),
+      labels: z.array(z.string()).default(['next-unicorn', 'dependencies']),
+      reviewers: z.array(z.string()).default([]),
+      draft: z.boolean().default(true),
+      branchPrefix: z.string().default('next-unicorn/'),
+      platform: z.enum(['github', 'gitlab', 'bitbucket']).default('github'),
+    })
+    .optional(),
 });
 
 export type InputSchema = z.infer<typeof InputSchema>;

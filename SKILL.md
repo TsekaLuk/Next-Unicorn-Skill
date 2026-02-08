@@ -1,8 +1,8 @@
 ---
 name: analyze-and-recommend-third-party-optimizations
 description: Scans any codebase and identifies where hand-rolled implementations should be replaced by battle-tested third-party libraries, producing structured migration plans with Context7-verified recommendations
-version: 1.0.0
-author: Nebutra
+version: 2.0.0
+author: TsekaLuk
 tags:
   - code-analysis
   - third-party-libraries
@@ -11,6 +11,9 @@ tags:
   - context7-verification
   - ux-audit
   - impact-scoring
+  - vulnerability-scanning
+  - auto-update
+  - pr-automation
 ---
 
 # Analyze and Recommend Third-Party Optimizations
@@ -114,6 +117,46 @@ For each gap found, map it to a recommended library with a rationale.
 2. **License filtering** — Exclude recommendations whose library license is not in the allowlist
 3. **Serialize** the final `OutputSchema` to pretty-printed JSON (2-space indent) with round-trip guarantee
 
+### Step 8: Vulnerability Scanning (Optional)
+
+Scan both current and recommended dependencies for known security vulnerabilities:
+
+1. Query the **OSV** (Open Source Vulnerabilities) database via injected `VulnerabilityClient`
+2. Scan **current dependencies** for known CVEs and advisories
+3. Scan **recommended replacement libraries** to prevent "upgrade into a vulnerability" scenarios
+4. Filter findings by `minimumSeverity` threshold (critical > high > medium > low)
+5. Compute summary: total scanned, count by severity, fixable vs unfixable
+6. Generate SARIF output for CI/CD integration (GitHub Code Scanning)
+
+If the OSV service is unavailable, set `serviceUnavailable: true` and continue the pipeline.
+
+### Step 9: Auto-Update Existing Dependencies (Optional)
+
+Analyze all existing dependencies and recommend version upgrades:
+
+1. Query package registries (npm, PyPI, crates.io, Go) via injected `RegistryClient`
+2. Apply configurable **update policy**: patch/minor/major strategy, pinned packages, min-age window
+3. Verify changelogs via **Context7 MCP** to detect breaking changes, new features, deprecations
+4. Score each update using the same **7-dimension impact model**
+5. Classify urgency: critical (fixes CVE), urgent (deprecated), recommended (new features), routine
+6. Group related packages (e.g. all `@babel/*` together)
+7. Build structured update plan with summary statistics
+
+If the registry is unavailable, skip the update plan silently.
+
+### Step 10: PR Auto-Creation (Optional)
+
+Automatically create GitHub/GitLab pull requests for updates and migrations:
+
+1. **Plan PRs** — Security fixes as separate PRs, grouped updates, migration PRs by phase
+2. **Generate code changes** — Update version in manifest files, scaffold adapter code for migrations
+3. **Build PR descriptions** — Rich markdown with impact tables, vulnerability details, reviewer checklist
+4. **Create branches and PRs** — Via injected `PlatformClient` and `GitOperations`
+5. **Deduplicate** — Update existing PRs instead of creating duplicates
+6. **Enforce limits** — Respect `maxOpenPRs`, prioritize security fixes first
+
+PR titles follow conventional commit format: `fix(deps):`, `chore(deps):`, `refactor(domain):`.
+
 ## Output Artifacts
 
 The SKILL produces a single `OutputSchema` JSON containing:
@@ -123,6 +166,9 @@ The SKILL produces a single `OutputSchema` JSON containing:
 - `linesSavedEstimate` — Total lines of code saved
 - `uxAudit` — Structured UX completeness checklist
 - `migrationPlan` — Phased plan with deletion checklist
+- `vulnerabilityReport` (optional) — Vulnerability findings, summary, SARIF output
+- `updatePlan` (optional) — Scored dependency updates with groups and summary
+- `pullRequests` (optional) — Created/updated PR results with status summary
 
 ## Usage
 
@@ -136,6 +182,11 @@ import { analyze } from './src/index.js';
 const result = await analyze({
   input: inputJson,
   context7Client: myContext7Client,
+  // Phase 2 optional clients:
+  vulnClient: myOsvClient,          // enables vulnerability scanning
+  registryClient: myRegistryClient,  // enables auto-update
+  platformClient: myGitHubClient,    // enables PR creation
+  gitOps: myGitOperations,           // enables PR creation
 });
 ```
 

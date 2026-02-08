@@ -1,29 +1,76 @@
 {
   "name": "@nebutra/next-unicorn-skill",
-  "version": "1.0.0",
-  "description": "SKILL that scans codebases and recommends replacing hand-rolled implementations with battle-tested third-party libraries",
+  "version": "2.0.0",
+  "description": "Stop Vibe Coding debt: audit your codebase, replace reinvented wheels with unicorn-grade libraries, scan vulnerabilities, auto-update deps, and auto-create PRs — all verified via Context7 MCP.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "SKILL.md",
+    "templates",
+    "examples",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"
   },
   "keywords": [
     "skill",
+    "mcp",
+    "ai-agent",
+    "claude-code",
     "codebase-analysis",
+    "third-party-libraries",
     "library-recommendations",
+    "dependency-optimization",
     "migration-planning",
-    "mcp"
+    "hand-rolled-code",
+    "code-modernization",
+    "context7",
+    "impact-scoring",
+    "ux-audit",
+    "vulnerability-scanning",
+    "auto-update",
+    "pr-automation",
+    "technical-debt",
+    "vibe-coding",
+    "monorepo"
   ],
-  "author": "Nebutra",
+  "author": "TsekaLuk (https://github.com/TsekaLuk)",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TsekaLuk/Next-Unicorn-Skill.git"
+  },
+  "homepage": "https://github.com/TsekaLuk/Next-Unicorn-Skill#readme",
+  "bugs": {
+    "url": "https://github.com/TsekaLuk/Next-Unicorn-Skill/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "dependencies": {
+    "semver": "^7.7.4",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/semver": "^7.7.1",
     "fast-check": "^4.4.0",
     "typescript": "^5.7.0",
     "vitest": "^4.0.18"
