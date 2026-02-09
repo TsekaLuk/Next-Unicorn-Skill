@@ -69,6 +69,16 @@ const recommendedChangeArb = fc.record({
     version: safeString,
     license: safeString,
     documentationUrl: fc.option(safeString, { nil: undefined }),
+    rationale: fc.option(safeString, { nil: undefined }),
+    ecosystem: fc.option(
+      fc.array(fc.record({ library: safeString, version: safeString, role: safeString }), { minLength: 0, maxLength: 3 }),
+      { nil: undefined },
+    ),
+    antiPatterns: fc.option(fc.array(safeString, { minLength: 0, maxLength: 3 }), { nil: undefined }),
+    alternatives: fc.option(
+      fc.array(fc.record({ library: safeString, when: safeString }), { minLength: 0, maxLength: 3 }),
+      { nil: undefined },
+    ),
   }),
   domain: safeString,
   impactScores: impactScoresArb,

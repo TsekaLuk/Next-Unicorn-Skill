@@ -55,27 +55,25 @@ Detections contain **no library suggestions** — only what was detected and whe
 
 ### Step 3: Recommend Solutions (AI Agent)
 
-For each detection, recommend a **unicorn-grade solution** — not just "a library that does this", but the specific combination of tools that the best engineering teams ship with, configured the way they configure it.
+For each detection, recommend a **solution** — not just a library, but an ecosystem-level answer. Consider:
 
-**Recommendation approach:**
-
-1. **Project context** — framework, runtime, existing deps determine the primary library (Next.js App Router → next-intl; Vite SPA → @lingui/core; Edge → jose, not jsonwebtoken)
-2. **Full ecosystem** — include companion packages that complete the solution (e.g., @lingui/macro for zero-runtime tagged templates + @lingui/cli for CI extraction + Crowdin TMS for professional translation workflows)
-3. **Stack integration** — explain how this fits the broader architecture (e.g., "combine react-hook-form + @hookform/resolvers + zod for schema-validated forms that share types with server validation")
-4. **Context7 verification** — call `resolve-library-id` + `query-docs` to confirm the library exists and get latest version/docs
+1. **Ecosystem composition** — recommend companion libraries that work together
+   (e.g., `@lingui/core` + `@lingui/macro` + `@lingui/cli` for compile-time i18n with TMS integration)
+2. **Rationale** — explain WHY this specific choice fits this project's framework, runtime, and scale
+3. **Anti-patterns** — what NOT to use and why (e.g., "Never use jsonwebtoken — no edge runtime support; use jose")
+4. **Alternatives** — different solutions for different architectural contexts
+5. **Context7 verification** — call `resolve-library-id` + `query-docs` to confirm the library exists and get latest version/docs
 
 Return a `LibraryRecommendation` per detection:
 ```typescript
 {
-  library: '@lingui/core',
-  version: '^4.0.0',
-  license: 'MIT',
-  rationale: 'Compile-time message extraction with near-zero runtime overhead',
-  ecosystem: [
-    { library: '@lingui/macro', version: '^4.0.0', role: 'Zero-runtime tagged template macros' },
-    { library: '@lingui/cli', version: '^4.0.0', role: 'CI/CD message extraction pipeline' },
-  ],
-  stackContext: 'Integrate with Crowdin TMS for professional translation workflows; use @lingui/vite-plugin for Vite or @lingui/swc-plugin for Next.js SWC compiler',
+  library: string;           // required — primary package
+  version: string;           // required
+  license: string;           // required
+  rationale?: string;        // recommended — WHY this choice
+  ecosystem?: Array<{...}>;  // when solution involves multiple packages
+  antiPatterns?: string[];   // when common mistakes exist
+  alternatives?: Array<{...}>;  // when architecture affects the choice
 }
 ```
 
@@ -118,23 +116,17 @@ import type { Recommender } from './src/index.js';
 // Step 1: Scan standalone (for AI agent inspection)
 const scanResult = await scanCodebase(validatedInput);
 
-// Step 2: Full pipeline with ecosystem-level recommender
+// Step 2: Full pipeline with recommender
 const recommender: Recommender = (detection) => ({
-  library: '@lingui/core',
-  version: '^4.0.0',
+  library: 'zustand',
+  version: '^5.0.0',
   license: 'MIT',
-  rationale: 'Compile-time extraction with near-zero runtime overhead',
-  ecosystem: [
-    { library: '@lingui/macro', version: '^4.0.0', role: 'Zero-runtime tagged templates' },
-    { library: '@lingui/cli', version: '^4.0.0', role: 'CI message extraction' },
-  ],
-  stackContext: 'Integrate with Crowdin TMS; use @lingui/swc-plugin for Next.js',
 });
 
 const result = await analyze({
   input: inputJson,
   context7Client: myContext7Client,
-  recommender, // AI agent provides ecosystem-level recommendations
+  recommender, // AI agent provides this
 });
 ```
 

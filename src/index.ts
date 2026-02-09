@@ -62,53 +62,44 @@ export const VERSION = '1.0.2';
 // ---------------------------------------------------------------------------
 
 /**
- * A companion package that forms part of the full recommended solution.
- */
-export interface EcosystemPackage {
-  /** Package name (e.g., "@lingui/macro") */
-  library: string;
-  /** Version constraint */
-  version: string;
-  /** Role in the ecosystem (e.g., "compile-time extraction", "TMS integration") */
-  role: string;
-}
-
-/**
  * A library recommendation provided by the AI agent (or caller).
- *
  * The scanner detects WHAT is hand-rolled; the recommender decides WHAT to use.
- * Recommendations should target unicorn-grade solutions: not just "a library
- * that does this", but the specific combination of tools that the best
- * engineering teams use, configured the way they configure it.
  *
- * A recommendation can be a single library OR a full ecosystem stack.
+ * Required fields give the pipeline what it needs for scoring/filtering.
+ * Optional fields let the AI agent express ecosystem-level solutions —
+ * rationale, companion packages, anti-patterns, and alternatives.
  */
 export interface LibraryRecommendation {
-  /** Primary library name (e.g., "@lingui/core") */
+  /** Primary library name (e.g., "@lingui/core", "zustand") */
   library: string;
   /** Version constraint (e.g., "^4.0.0") */
   version: string;
   /** SPDX license identifier (e.g., "MIT") */
   license: string;
-  /**
-   * WHY this specific library/stack is the right choice for this project.
-   * Should reference project context (framework, runtime, scale).
-   * Example: "Lingui uses compile-time extraction with near-zero runtime
-   * overhead; integrates with Crowdin TMS for professional translation workflows"
-   */
+
+  /** WHY this library — the AI agent's reasoning for this specific choice */
   rationale?: string;
-  /**
-   * Companion packages that form the full unicorn-grade solution.
-   * Example: @lingui/macro (zero-runtime tagged templates),
-   * @lingui/cli (CI extraction), crowdin (TMS integration)
-   */
-  ecosystem?: EcosystemPackage[];
-  /**
-   * How this recommendation connects to the broader architectural stack.
-   * Example: "Combine with next-intl routing for App Router i18n,
-   * or use standalone with Vite plugin for SPA"
-   */
-  stackContext?: string;
+
+  /** Companion libraries that form a cohesive solution */
+  ecosystem?: Array<{
+    /** Package name */
+    library: string;
+    /** Version constraint */
+    version: string;
+    /** Role in the solution (e.g., "CI/CD message extraction") */
+    role: string;
+  }>;
+
+  /** What NOT to use, and why */
+  antiPatterns?: string[];
+
+  /** Alternative solutions for different architectural contexts */
+  alternatives?: Array<{
+    /** Package name */
+    library: string;
+    /** When to prefer this alternative (e.g., "Next.js App Router with server components") */
+    when: string;
+  }>;
 }
 
 /**
@@ -282,12 +273,9 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
         license: rec.license,
         documentationUrl: verification.documentationUrl,
         rationale: rec.rationale,
-        ecosystem: rec.ecosystem?.map((e) => ({
-          library: e.library,
-          version: e.version,
-          role: e.role,
-        })),
-        stackContext: rec.stackContext,
+        ecosystem: rec.ecosystem,
+        antiPatterns: rec.antiPatterns,
+        alternatives: rec.alternatives,
       },
       domain: detection.domain,
       impactScores: scoringOutput.scores,

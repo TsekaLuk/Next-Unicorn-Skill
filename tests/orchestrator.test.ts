@@ -244,6 +244,59 @@ describe('analyze — end-to-end success', () => {
     }
   });
 
+  it('rich recommendations with ecosystem/rationale/alternatives flow through to output', async () => {
+    writeFile('src/utils.ts', `
+      function formatCount(count: number) {
+        return count === 1 ? 'item' : 'items';
+      }
+    `);
+
+    // Rich recommender simulating what a real AI agent would provide
+    const richRecommender: Recommender = () => ({
+      library: '@lingui/core',
+      version: '^4.0.0',
+      license: 'MIT',
+      rationale: 'Compile-time message extraction with near-zero runtime overhead via ICU MessageFormat.',
+      ecosystem: [
+        { library: '@lingui/macro', version: '^4.0.0', role: 'Zero-runtime-cost tagged templates' },
+        { library: '@lingui/cli', version: '^4.0.0', role: 'CI/CD message extraction and catalog compilation' },
+      ],
+      antiPatterns: [
+        'Avoid i18next if bundle size matters — Lingui compiles away at build time',
+      ],
+      alternatives: [
+        { library: 'next-intl', when: 'Next.js App Router with server components' },
+        { library: 'i18next', when: 'Framework-agnostic or non-React projects' },
+      ],
+    });
+
+    const result = await analyze({
+      input: makeValidInput(),
+      context7Client: makeMockContext7Client(),
+      recommender: richRecommender,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    expect(result.output.recommendedChanges.length).toBeGreaterThan(0);
+
+    const rec = result.output.recommendedChanges[0]!;
+    expect(rec.recommendedLibrary.name).toBe('@lingui/core');
+    expect(rec.recommendedLibrary.rationale).toContain('Compile-time');
+    expect(rec.recommendedLibrary.ecosystem).toHaveLength(2);
+    expect(rec.recommendedLibrary.ecosystem![0]!.library).toBe('@lingui/macro');
+    expect(rec.recommendedLibrary.ecosystem![0]!.role).toContain('tagged templates');
+    expect(rec.recommendedLibrary.antiPatterns).toHaveLength(1);
+    expect(rec.recommendedLibrary.antiPatterns![0]).toContain('i18next');
+    expect(rec.recommendedLibrary.alternatives).toHaveLength(2);
+    expect(rec.recommendedLibrary.alternatives![0]!.library).toBe('next-intl');
+
+    // Output should still be valid against OutputSchema
+    const parsed = OutputSchema.safeParse(result.output);
+    expect(parsed.success).toBe(true);
+  });
+
   it('recommender returning null skips that detection', async () => {
     writeFile('src/utils.ts', `
       function formatCount(count: number) {

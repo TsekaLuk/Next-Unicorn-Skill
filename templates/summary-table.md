@@ -16,6 +16,38 @@
 | {{@index}} | {{recommendedLibrary.name}} | {{impactScores.scalability}} | {{impactScores.performance}} | {{impactScores.security}} | {{impactScores.maintainability}} | {{impactScores.feature_richness}} | {{impactScores.ux}} | {{impactScores.ui_aesthetics}} |
 {{/each}}
 
+## Solution Details
+
+{{#each recommendedChanges}}
+{{#if recommendedLibrary.rationale}}
+### {{@index}}. {{recommendedLibrary.name}}
+
+**Rationale**: {{recommendedLibrary.rationale}}
+
+{{#if recommendedLibrary.ecosystem}}
+**Ecosystem**:
+{{#each recommendedLibrary.ecosystem}}
+- `{{library}}` v{{version}} — {{role}}
+{{/each}}
+{{/if}}
+
+{{#if recommendedLibrary.antiPatterns}}
+**Anti-patterns**:
+{{#each recommendedLibrary.antiPatterns}}
+- {{this}}
+{{/each}}
+{{/if}}
+
+{{#if recommendedLibrary.alternatives}}
+**Alternatives**:
+{{#each recommendedLibrary.alternatives}}
+- `{{library}}` — {{when}}
+{{/each}}
+{{/if}}
+
+{{/if}}
+{{/each}}
+
 ## Summary Statistics
 
 - **Total recommendations**: {{recommendedChanges.length}}
