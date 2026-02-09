@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-02-09
+
+### Added
+
+- **Ecosystem-level recommendations** — `LibraryRecommendation` now supports `rationale`, `ecosystem` (companion packages with roles), and `stackContext` fields, enabling AI agents to produce unicorn-grade solution stacks instead of single-library suggestions
+- New `EcosystemPackage` type for companion packages (library + version + role)
+- Output schema `RecommendedChange.recommendedLibrary` extended with `rationale`, `ecosystem`, and `stackContext` optional fields
+- SKILL.md Step 3 rewritten to guide AI agents toward ecosystem-level thinking: "not just 'a library that does this', but the specific combination of tools that the best engineering teams ship with"
+
+### Changed
+
+- `LibraryRecommendation` interface extended (backward-compatible — new fields are optional)
+- SKILL.md example now shows full ecosystem recommendation (@lingui/core + @lingui/macro + @lingui/cli + Crowdin TMS)
+- Version bumped to 1.0.2
+
 ## [1.0.1] - 2026-02-09
 
 ### Changed

@@ -63,14 +63,20 @@ npm install @nebutra/next-unicorn-skill
 import { analyze, scanCodebase } from '@nebutra/next-unicorn-skill';
 import type { Recommender } from '@nebutra/next-unicorn-skill';
 
-// The recommender function: AI agent decides which library fits each detection
+// The recommender function: AI agent decides the full ecosystem for each detection
 const recommender: Recommender = (detection) => {
   // AI agent uses its knowledge + project context to recommend
   // Return null to skip a detection (false positive, intentional custom code)
   return {
-    library: 'zustand',       // dynamically chosen, not hardcoded
-    version: '^5.0.0',        // verified via Context7
+    library: '@lingui/core',          // primary library
+    version: '^4.0.0',               // verified via Context7
     license: 'MIT',
+    rationale: 'Compile-time extraction with near-zero runtime overhead',
+    ecosystem: [                      // companion packages
+      { library: '@lingui/macro', version: '^4.0.0', role: 'Zero-runtime tagged templates' },
+      { library: '@lingui/cli', version: '^4.0.0', role: 'CI/CD message extraction' },
+    ],
+    stackContext: 'Integrate with Crowdin TMS for professional translation workflows',
   };
 };
 

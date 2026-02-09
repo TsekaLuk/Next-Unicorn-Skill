@@ -1,7 +1,7 @@
 ---
 name: analyze-and-recommend-third-party-optimizations
 description: Scans any codebase and identifies where hand-rolled implementations should be replaced by battle-tested third-party libraries, producing structured migration plans with Context7-verified recommendations
-version: 1.0.1
+version: 1.0.2
 author: TsekaLuk
 tags:
   - code-analysis
@@ -32,20 +32,6 @@ hand-rolled code               using knowledge + Context7       filter, serializ
 
 **Key principle**: The pattern catalog contains NO hardcoded library recommendations. Library choices depend on project framework, runtime, existing dependencies, and current ecosystem state — all of which the AI agent evaluates dynamically.
 
-## Recommendation Quality Standard
-
-Do NOT recommend "any library that does this." Recommend the specific library that the best engineering teams ship with, configured the way they configure it. Evaluate every recommendation against these 5 criteria:
-
-1. **Solution, not library** — Recommend the composable stack, not a single package. Example: "Lingui + @lingui/macro (compile-time extraction) + Crowdin TMS (professional translation workflow)" — not just "an i18n library."
-2. **Architectural fit** — Match the project's runtime and framework constraints. Edge runtime → jose, not jsonwebtoken. Next.js App Router → next-intl, not react-i18next. Serverless → @upstash/ratelimit, not rate-limiter-flexible. Always explain WHY.
-3. **Product-grade DX** — Prefer tools that Silicon Valley unicorns actually ship: Supabase over raw pg, Clerk over passport, shadcn/ui + Radix over hand-rolled components, Resend over nodemailer, Linear over Jira-style tools. The bar is "would a YC-backed startup use this in production?"
-4. **Ecosystem integration** — Show how the recommendation connects to the broader stack. "react-hook-form + @hookform/resolvers + zod → shared validation schemas between client and server." "Sentry + source maps upload in CI → readable production stack traces."
-5. **Anti-patterns** — State what NOT to do and why. "Never call LLM APIs with raw fetch — you lose streaming, retry, and structured output." "Never use jsonwebtoken — no edge runtime support." "Never hardcode tax rates — they change per jurisdiction."
-
-For each recommendation, provide: the primary library, version, license, AND a brief rationale covering criteria 1–5 above as applicable. For detections with multiple valid approaches, name the primary choice and note alternatives with their "when to prefer" conditions.
-
-See [references/unicorn-catalog.md](references/unicorn-catalog.md) for the reference catalog of unicorn-grade products by category.
-
 ## Standard Operating Procedure
 
 ### Step 1: Validate Input
@@ -67,12 +53,30 @@ Run `scanCodebase(input)` to walk the file tree and match against regex patterns
 
 Detections contain **no library suggestions** — only what was detected and where.
 
-### Step 3: Recommend Libraries (AI Agent)
+### Step 3: Recommend Solutions (AI Agent)
 
-For each detection, apply the [Recommendation Quality Standard](#recommendation-quality-standard) and return a `LibraryRecommendation`:
+For each detection, recommend a **unicorn-grade solution** — not just "a library that does this", but the specific combination of tools that the best engineering teams ship with, configured the way they configure it.
 
+**Recommendation approach:**
+
+1. **Project context** — framework, runtime, existing deps determine the primary library (Next.js App Router → next-intl; Vite SPA → @lingui/core; Edge → jose, not jsonwebtoken)
+2. **Full ecosystem** — include companion packages that complete the solution (e.g., @lingui/macro for zero-runtime tagged templates + @lingui/cli for CI extraction + Crowdin TMS for professional translation workflows)
+3. **Stack integration** — explain how this fits the broader architecture (e.g., "combine react-hook-form + @hookform/resolvers + zod for schema-validated forms that share types with server validation")
+4. **Context7 verification** — call `resolve-library-id` + `query-docs` to confirm the library exists and get latest version/docs
+
+Return a `LibraryRecommendation` per detection:
 ```typescript
-{ library: string; version: string; license: string }
+{
+  library: '@lingui/core',
+  version: '^4.0.0',
+  license: 'MIT',
+  rationale: 'Compile-time message extraction with near-zero runtime overhead',
+  ecosystem: [
+    { library: '@lingui/macro', version: '^4.0.0', role: 'Zero-runtime tagged template macros' },
+    { library: '@lingui/cli', version: '^4.0.0', role: 'CI/CD message extraction pipeline' },
+  ],
+  stackContext: 'Integrate with Crowdin TMS for professional translation workflows; use @lingui/vite-plugin for Vite or @lingui/swc-plugin for Next.js SWC compiler',
+}
 ```
 
 Return `null` to skip a detection (intentional custom code, false positive, etc.).
@@ -85,15 +89,15 @@ Return `null` to skip a detection (intentional custom code, false positive, etc.
 
 ### Step 4: Score Impact
 
-Compute 7-dimension impact scores (scalability, performance, security, maintainability, feature richness, UX, UI aesthetics) with composite score, migration risk, and estimated effort. Provide `dimensionHints` and `baseEffortHours` when you can assess code complexity.
+Compute 7-dimension impact scores (scalability, performance, security, maintainability, feature richness, UX, UI aesthetics) with composite score, migration risk, and estimated effort.
 
 ### Step 5: Build Migration Plan
 
-Group recommendations into phases by risk (low → medium → high). High-risk items include adapter strategies.
+Group recommendations into phases by risk (low → medium → high), ordered by domain priority (infrastructure first, presentation last). High-risk items include adapter strategies.
 
 ### Step 6: Audit UX Completeness
 
-Evaluate frontend codebase across 8 UX categories: accessibility, error/empty/loading states, form validation, performance feel, copy consistency, design system alignment. Fill in `recommendedLibrary` for partial/missing categories.
+Evaluate frontend codebase across 8 UX categories: accessibility, error/empty/loading states, form validation, performance feel, copy consistency, design system alignment.
 
 ### Step 7: Apply Constraints and Serialize
 
@@ -114,17 +118,23 @@ import type { Recommender } from './src/index.js';
 // Step 1: Scan standalone (for AI agent inspection)
 const scanResult = await scanCodebase(validatedInput);
 
-// Step 2: Full pipeline with recommender
+// Step 2: Full pipeline with ecosystem-level recommender
 const recommender: Recommender = (detection) => ({
-  library: 'zustand',
-  version: '^5.0.0',
+  library: '@lingui/core',
+  version: '^4.0.0',
   license: 'MIT',
+  rationale: 'Compile-time extraction with near-zero runtime overhead',
+  ecosystem: [
+    { library: '@lingui/macro', version: '^4.0.0', role: 'Zero-runtime tagged templates' },
+    { library: '@lingui/cli', version: '^4.0.0', role: 'CI message extraction' },
+  ],
+  stackContext: 'Integrate with Crowdin TMS; use @lingui/swc-plugin for Next.js',
 });
 
 const result = await analyze({
   input: inputJson,
   context7Client: myContext7Client,
-  recommender, // AI agent provides this
+  recommender, // AI agent provides ecosystem-level recommendations
 });
 ```
 

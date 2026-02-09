@@ -30,6 +30,14 @@ export const AdapterStrategy = z.object({
 
 export type AdapterStrategy = z.infer<typeof AdapterStrategy>;
 
+export const EcosystemPackage = z.object({
+  library: z.string(),
+  version: z.string(),
+  role: z.string(),
+});
+
+export type EcosystemPackage = z.infer<typeof EcosystemPackage>;
+
 export const RecommendedChange = z.object({
   currentImplementation: z.object({
     filePath: z.string(),
@@ -42,6 +50,12 @@ export const RecommendedChange = z.object({
     version: z.string(),
     license: z.string(),
     documentationUrl: z.string().optional(),
+    /** WHY this specific library/stack is the right choice */
+    rationale: z.string().optional(),
+    /** Companion packages forming the full ecosystem solution */
+    ecosystem: z.array(EcosystemPackage).optional(),
+    /** How this connects to the broader architectural stack */
+    stackContext: z.string().optional(),
   }),
   domain: z.string(),
   impactScores: ImpactScores,
