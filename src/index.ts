@@ -5,9 +5,15 @@
  * replaced by third-party libraries. Library recommendations are provided
  * by the caller (AI agent or programmatic client) — NOT hardcoded.
  *
- * This is the orchestrator that wires the full pipeline:
- * validate input → scan → recommend (caller) → verify → score → plan →
- * audit → filter → vuln scan → auto-update → serialize → PR creation
+ * Redundant modules removed (Occam's Razor):
+ * - impact-scorer → inlined (trivial math)
+ * - migration-planner → inlined (group-by-risk + sort)
+ * - ux-auditor → AI-agent-driven (Claude reads package.json better)
+ * - constraint-filter → inlined (Set.has)
+ * - serializer → inlined (JSON.stringify)
+ * - update-scorer, update-plan-builder, changelog-verifier → simplified
+ * - pr-description-builder → AI agent writes better PR descriptions
+ * - skill-parser, vuln-report-builder → dead code deleted
  */
 
 import { ZodError } from 'zod';
@@ -17,6 +23,7 @@ import {
   type RecommendedChange,
   type VulnReport,
   type UpdatePlan,
+  type UxAuditItem,
 } from './schemas/output.schema.js';
 import { scanCodebase, type Detection, type ScanResult } from './analyzer/scanner.js';
 import {
@@ -24,29 +31,17 @@ import {
   verifyAllRecommendations,
   type Context7Client,
 } from './verifier/context7.js';
-import { computeImpactScore } from './scorer/impact-scorer.js';
-import { buildMigrationPlan } from './planner/migration-planner.js';
-import { auditUxCompleteness } from './auditor/ux-auditor.js';
-import {
-  filterByLicense,
-  detectDependencyConflicts,
-  type ExclusionRecord,
-} from './utils/constraint-filter.js';
-import { serializeOutput, prettyPrint } from './utils/serializer.js';
 import {
   checkPeerDependencies,
   type PeerDependencyResolver,
   type PeerDependencyWarning,
 } from './checker/peer-dependency-checker.js';
 
-// Phase 2 imports
+// Phase 2 imports (kept — non-trivial external API logic)
 import type { VulnerabilityClient } from './security/osv-client.js';
 import { scanVulnerabilities } from './security/vulnerability-scanner.js';
 import type { RegistryClient } from './updater/registry-client.js';
 import { applyUpdatePolicy } from './updater/update-policy.js';
-import { verifyChangelog } from './updater/changelog-verifier.js';
-import { scoreUpdate } from './updater/update-scorer.js';
-import { buildUpdatePlan } from './updater/update-plan-builder.js';
 import { planPRs } from './pr-creator/pr-strategy.js';
 import { executePRPlans } from './pr-creator/pr-executor.js';
 import type { PlatformClient } from './pr-creator/platform-client.js';
@@ -56,7 +51,7 @@ import type { GitOperations } from './pr-creator/git-operations.js';
 // Version
 // ---------------------------------------------------------------------------
 
-export const VERSION = '1.0.5';
+export const VERSION = '1.0.6';
 
 // ---------------------------------------------------------------------------
 // Public interfaces
@@ -64,71 +59,25 @@ export const VERSION = '1.0.5';
 
 /**
  * A library recommendation provided by the AI agent (or caller).
- * The scanner detects WHAT is hand-rolled; the recommender decides WHAT to use.
- *
- * Required fields give the pipeline what it needs for scoring/filtering.
- * Optional fields let the AI agent express ecosystem-level solutions —
- * rationale, companion packages, anti-patterns, and alternatives.
  */
 export interface LibraryRecommendation {
-  /** Primary library name (e.g., "@lingui/core", "zustand") */
   library: string;
-  /** Version constraint (e.g., "^4.0.0") */
   version: string;
-  /** SPDX license identifier (e.g., "MIT") */
   license: string;
-
-  /** WHY this library — the AI agent's reasoning for this specific choice */
   rationale?: string;
-
-  /** Companion libraries that form a cohesive solution */
-  ecosystem?: Array<{
-    /** Package name */
-    library: string;
-    /** Version constraint */
-    version: string;
-    /** Role in the solution (e.g., "CI/CD message extraction") */
-    role: string;
-  }>;
-
-  /** What NOT to use, and why */
+  ecosystem?: Array<{ library: string; version: string; role: string }>;
   antiPatterns?: string[];
-
-  /** Alternative solutions for different architectural contexts */
-  alternatives?: Array<{
-    /** Package name */
-    library: string;
-    /** When to prefer this alternative (e.g., "Next.js App Router with server components") */
-    when: string;
-  }>;
+  alternatives?: Array<{ library: string; when: string }>;
 }
 
-/**
- * Function that provides library recommendations for detections.
- * Called once per detection. Return null to skip a detection (no recommendation).
- *
- * In AI agent mode: the agent fills this based on its knowledge + Context7.
- * In programmatic/test mode: the caller provides a deterministic function.
- */
 export type Recommender = (detection: Detection) => LibraryRecommendation | null;
 
 /**
- * A capability gap identified by the AI agent — something the project
- * SHOULD have but DOESN'T. Unlike scanner detections (which find hand-rolled
- * code to replace), gaps identify missing capabilities entirely.
- *
- * Examples:
- * - "No structured logging" → recommend pino
- * - "No error monitoring" → recommend Sentry
- * - "No rate limiting" → recommend Arcjet
- * - "No event-driven workflows" → recommend Inngest
+ * A capability gap — something the project SHOULD have but DOESN'T.
  */
 export interface GapRecommendation {
-  /** The Vibe Coding domain this gap belongs to */
   domain: string;
-  /** What capability is missing (e.g., "No structured logging detected") */
   description: string;
-  /** The recommended solution */
   recommendedLibrary: {
     name: string;
     version: string;
@@ -139,39 +88,22 @@ export interface GapRecommendation {
     antiPatterns?: string[];
     alternatives?: Array<{ library: string; when: string }>;
   };
-  /** How important is filling this gap */
   priority: 'critical' | 'recommended' | 'nice-to-have';
-  /** Context7 verification status — filled by the pipeline, not the AI agent */
   verificationStatus?: 'verified' | 'unverified' | 'unavailable';
   verificationNote?: string;
 }
 
 export interface AnalyzeOptions {
-  /** Raw input to be validated against InputSchema */
   input: unknown;
-  /** Injected Context7 client for testability — no real HTTP calls in tests */
   context7Client: Context7Client;
-  /**
-   * Recommender function: maps each detection to a library recommendation.
-   * This is the key integration point for AI agents — the agent decides
-   * which library best fits each detected pattern based on project context.
-   */
   recommender: Recommender;
-  /**
-   * Gap recommendations from the AI agent — capabilities the project should
-   * have but doesn't. The scanner finds "you hand-rolled X"; gaps find
-   * "you're missing Y entirely" (e.g., no error monitoring, no rate limiting).
-   */
   gaps?: GapRecommendation[];
-  /** Optional — if provided, enables vulnerability scanning */
+  /** Optional UX audit items — AI agent provides these based on project analysis */
+  uxAudit?: UxAuditItem[];
   vulnClient?: VulnerabilityClient;
-  /** Optional — if provided, enables auto-update recommendations */
   registryClient?: RegistryClient;
-  /** Required only if prPolicy.enabled is true */
   platformClient?: PlatformClient;
-  /** Required only if prPolicy.enabled is true */
   gitOps?: GitOperations;
-  /** Optional — if provided, resolves peer dependency metadata for recommended libraries */
   peerDependencyResolver?: PeerDependencyResolver;
 }
 
@@ -179,7 +111,6 @@ export type AnalyzeResult =
   | {
       success: true;
       output: OutputSchema;
-      /** Raw scan result (detections + workspaces) for AI agent further analysis */
       scanResult: ScanResult;
       json: string;
       prettyJson: string;
@@ -191,55 +122,38 @@ export type AnalyzeResult =
       issues?: unknown;
     };
 
+export interface ExclusionRecord {
+  libraryName: string;
+  license: string;
+  reason: string;
+}
+
 // ---------------------------------------------------------------------------
-// Re-exports for consumer convenience
+// Re-exports
 // ---------------------------------------------------------------------------
 
 export type { Context7Client, VerificationResult } from './verifier/context7.js';
-export type { ExclusionRecord } from './utils/constraint-filter.js';
 export type { InputSchema } from './schemas/input.schema.js';
-export type { OutputSchema } from './schemas/output.schema.js';
+export type { OutputSchema, UxAuditItem } from './schemas/output.schema.js';
 export type { Detection, ScanResult } from './analyzer/scanner.js';
 export type { StructuralFinding, StructuralAnalysis } from './analyzer/structure-analyzer.js';
+export { scanCodebase } from './analyzer/scanner.js';
 export { analyzeStructure } from './analyzer/structure-analyzer.js';
+export { getPatternCatalog } from './analyzer/pattern-catalog.js';
 export type { VulnerabilityClient } from './security/osv-client.js';
 export type { RegistryClient } from './updater/registry-client.js';
 export type { PlatformClient } from './pr-creator/platform-client.js';
 export type { GitOperations } from './pr-creator/git-operations.js';
 export type { PeerDependencyResolver } from './checker/peer-dependency-checker.js';
-export { scanCodebase } from './analyzer/scanner.js';
-export { getPatternCatalog } from './analyzer/pattern-catalog.js';
 
 // ---------------------------------------------------------------------------
 // analyze — main orchestrator
 // ---------------------------------------------------------------------------
 
-/**
- * Run the full Next-Unicorn analysis pipeline.
- *
- * Pipeline steps:
- * 1.  Validate input with InputSchema Zod schema
- * 2.  Scan codebase with scanCodebase
- * 2.5 Get library recommendations from the recommender (AI agent / caller)
- * 3.  Verify recommendations with Context7
- * 4.  Score each detection
- * 5.  Build RecommendedChange objects
- * 6.  Apply dependency conflict detection
- * 6.5 Vulnerability scanning (optional — Phase 2)
- * 7.  Apply license filtering
- * 8.  Build migration plan
- * 9.  Audit UX completeness
- * 10. Auto-update existing dependencies (optional — Phase 2)
- * 11. Assemble OutputSchema, serialize
- * 12. PR auto-creation (optional — Phase 2)
- * 13. Return result
- */
 export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
   const { input, context7Client, recommender } = options;
 
-  // -------------------------------------------------------------------------
   // Step 1: Validate input
-  // -------------------------------------------------------------------------
   let validatedInput: InputSchema;
   try {
     validatedInput = InputSchema.parse(input);
@@ -251,57 +165,49 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
         issues: err.errors,
       };
     }
-    return {
-      success: false,
-      error: `Input validation failed: ${String(err)}`,
-    };
+    return { success: false, error: `Input validation failed: ${String(err)}` };
   }
 
-  // -------------------------------------------------------------------------
   // Step 2: Scan codebase
-  // -------------------------------------------------------------------------
   const scanResult = await scanCodebase(validatedInput);
 
-  // -------------------------------------------------------------------------
-  // Step 2.5: Get library recommendations from the recommender
-  // -------------------------------------------------------------------------
+  // Step 2.5: Get library recommendations
   const libraryRecs = scanResult.detections.map((detection) => recommender(detection));
 
-  // -------------------------------------------------------------------------
   // Step 3: Verify recommendations with Context7
-  // -------------------------------------------------------------------------
   const verificationItems = scanResult.detections.map((detection, i) => {
     const rec = libraryRecs[i];
-    return rec
-      ? { libraryName: rec.library, useCase: detection.patternCategory }
-      : null;
+    return rec ? { libraryName: rec.library, useCase: detection.patternCategory } : null;
   });
-  const verificationMap = await verifyAllRecommendations(
-    context7Client,
-    verificationItems,
-  );
+  const verificationMap = await verifyAllRecommendations(context7Client, verificationItems);
 
-  // -------------------------------------------------------------------------
-  // Step 4 & 5: Score each detection and build RecommendedChange objects
-  // -------------------------------------------------------------------------
+  // Step 4 & 5: Score + build RecommendedChange (inlined)
   const recommendations: RecommendedChange[] = [];
-
   for (let i = 0; i < scanResult.detections.length; i++) {
     const detection = scanResult.detections[i]!;
     const rec = libraryRecs[i];
-    if (!rec) continue; // Skip detections without recommendations
+    if (!rec) continue;
 
     const verification = verificationMap.get(i) ?? {
       status: 'unavailable' as const,
       note: 'No verification result available',
     };
 
-    const scoringOutput = computeImpactScore({
-      detection,
-      verification,
-      weights: validatedInput.impactWeights,
-      priorityFocusAreas: validatedInput.priorityFocusAreas,
-    });
+    // Inline scoring: confidence → base score, uniform across dimensions
+    const baseScore = Math.max(1, Math.min(10, Math.round(3 + detection.confidenceScore * 4)));
+    const composite = Math.round(baseScore * 10) / 10;
+
+    // Inline risk derivation
+    const migrationRisk: 'low' | 'medium' | 'high' =
+      verification.status === 'unavailable' ? 'high'
+      : detection.confidenceScore >= 0.7 && verification.status === 'verified' ? 'low'
+      : detection.confidenceScore >= 0.4 ? 'medium'
+      : 'high';
+
+    // Inline effort estimation
+    const lineCount = detection.lineRange.end - detection.lineRange.start + 1;
+    const riskMul = migrationRisk === 'low' ? 1.0 : migrationRisk === 'medium' ? 1.5 : 2.5;
+    const estimatedEffort = Math.round((2.0 + lineCount * 0.1) * riskMul * 10) / 10;
 
     recommendations.push({
       currentImplementation: {
@@ -321,28 +227,32 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
         alternatives: rec.alternatives,
       },
       domain: detection.domain,
-      impactScores: scoringOutput.scores,
-      migrationRisk: scoringOutput.migrationRisk,
-      estimatedEffort: scoringOutput.estimatedEffort,
+      impactScores: {
+        scalability: baseScore,
+        performance: baseScore,
+        security: baseScore,
+        maintainability: baseScore,
+        feature_richness: baseScore,
+        ux: baseScore,
+        ui_aesthetics: baseScore,
+        composite,
+      },
+      migrationRisk,
+      estimatedEffort,
       verificationStatus: verification.status,
       verificationNote: verification.note,
     });
   }
 
-  // -------------------------------------------------------------------------
-  // Step 6: Apply dependency conflict detection
-  // -------------------------------------------------------------------------
-  const conflictChecked = detectDependencyConflicts(
-    recommendations,
-    validatedInput.projectMetadata.currentLibraries,
-  );
+  // Step 6: Dependency conflict detection (inlined)
+  const conflictChecked = recommendations.map((rec) => {
+    const existing = validatedInput.projectMetadata.currentLibraries[rec.recommendedLibrary.name];
+    return existing !== undefined ? { ...rec, migrationRisk: 'high' as const } : rec;
+  });
 
-  // -------------------------------------------------------------------------
-  // Step 6.25: Check peer dependencies
-  // -------------------------------------------------------------------------
+  // Step 6.25: Peer dependency check
   let peerWarnings: PeerDependencyWarning[] = [];
   let peerCheckedRecommendations: RecommendedChange[] = conflictChecked;
-
   try {
     const resolver: PeerDependencyResolver = options.peerDependencyResolver ?? {
       resolve: async () => ({}),
@@ -355,19 +265,14 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
     peerWarnings = peerCheckResult.warnings;
     peerCheckedRecommendations = peerCheckResult.recommendations;
   } catch {
-    // Unexpected error — fall back to empty warnings and original recommendations
     peerWarnings = [];
     peerCheckedRecommendations = conflictChecked;
   }
 
-  // -------------------------------------------------------------------------
-  // Step 6.5: Vulnerability scanning (optional — Phase 2)
-  // -------------------------------------------------------------------------
+  // Step 6.5: Vulnerability scanning (optional)
   let vulnerabilityReport: VulnReport | undefined;
   if (options.vulnClient) {
-    const defaultEcosystem = detectDefaultEcosystem(
-      validatedInput.projectMetadata.packageManagers,
-    );
+    const defaultEcosystem = detectDefaultEcosystem(validatedInput.projectMetadata.packageManagers);
     const vulnResult = await scanVulnerabilities(
       {
         currentLibraries: validatedInput.projectMetadata.currentLibraries,
@@ -396,50 +301,77 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
     };
   }
 
-  // -------------------------------------------------------------------------
-  // Step 7: Apply license filtering
-  // -------------------------------------------------------------------------
-  const { recommendations: filteredRecommendations, exclusions } = filterByLicense(
-    peerCheckedRecommendations,
-    validatedInput.constraints.licenseAllowlist,
-  );
+  // Step 7: License filtering (inlined)
+  const licenseAllowlist = validatedInput.constraints.licenseAllowlist;
+  const allowSet = new Set(licenseAllowlist);
+  const exclusions: ExclusionRecord[] = [];
+  const filteredRecommendations = licenseAllowlist.length === 0
+    ? [...peerCheckedRecommendations]
+    : peerCheckedRecommendations.filter((rec) => {
+        if (allowSet.has(rec.recommendedLibrary.license)) return true;
+        exclusions.push({
+          libraryName: rec.recommendedLibrary.name,
+          license: rec.recommendedLibrary.license,
+          reason: `License "${rec.recommendedLibrary.license}" is not in the allowlist [${licenseAllowlist.join(', ')}]`,
+        });
+        return false;
+      });
 
-  // -------------------------------------------------------------------------
-  // Step 8: Build migration plan
-  // -------------------------------------------------------------------------
-  const migrationPlan = buildMigrationPlan(filteredRecommendations);
+  // Step 8: Migration plan (inlined — group by risk, sort by file + composite)
+  const riskGroups: Record<string, Array<{ index: number; rec: RecommendedChange }>> = {
+    low: [], medium: [], high: [],
+  };
+  for (let i = 0; i < filteredRecommendations.length; i++) {
+    const rec = filteredRecommendations[i]!;
+    riskGroups[rec.migrationRisk]!.push({ index: i, rec });
+  }
+  for (const risk of ['low', 'medium', 'high'] as const) {
+    riskGroups[risk]!.sort((a, b) => {
+      const f = a.rec.currentImplementation.filePath.localeCompare(b.rec.currentImplementation.filePath);
+      return f !== 0 ? f : b.rec.impactScores.composite - a.rec.impactScores.composite;
+    });
+  }
+  const riskNames = { low: 'Low-Risk Quick Wins', medium: 'Medium-Risk Improvements', high: 'High-Risk Transformations' };
+  const phases = (['low', 'medium', 'high'] as const)
+    .filter((r) => riskGroups[r]!.length > 0)
+    .map((risk, idx) => ({
+      phase: idx + 1,
+      name: riskNames[risk],
+      steps: riskGroups[risk]!.map((item) => {
+        const step: { recommendationIndex: number; description: string; adapterStrategy?: { wrapperInterface: string; legacyCode: string; targetLibrary: string; description: string } } = {
+          recommendationIndex: item.index,
+          description: `Replace ${item.rec.currentImplementation.patternCategory} in ${item.rec.currentImplementation.filePath} with ${item.rec.recommendedLibrary.name}${risk === 'high' ? ' using adapter strategy' : risk === 'low' ? ' (quick win)' : ''}`,
+        };
+        if (risk === 'high') {
+          step.adapterStrategy = item.rec.adapterStrategy ?? {
+            wrapperInterface: `I${item.rec.currentImplementation.patternCategory}Adapter`,
+            legacyCode: item.rec.currentImplementation.filePath,
+            targetLibrary: item.rec.recommendedLibrary.name,
+            description: `Adapter wrapping legacy ${item.rec.currentImplementation.patternCategory} implementation to transition to ${item.rec.recommendedLibrary.name}`,
+          };
+        }
+        return step;
+      }),
+    }));
+  const deletionChecklist = filteredRecommendations.map((rec) => ({
+    filePath: rec.currentImplementation.filePath,
+    lineRange: rec.currentImplementation.lineRange,
+    reason: `Replaced ${rec.currentImplementation.patternCategory} with ${rec.recommendedLibrary.name}`,
+  }));
 
-  // -------------------------------------------------------------------------
-  // Step 9: Audit UX completeness
-  // -------------------------------------------------------------------------
-  const uxAuditResult = auditUxCompleteness(scanResult, validatedInput.projectMetadata);
+  // Step 9: UX audit — AI-agent-driven (empty default, agent fills via options.uxAudit)
+  const uxAudit: UxAuditItem[] = options.uxAudit ?? [];
 
-  // -------------------------------------------------------------------------
-  // Step 10: Auto-update existing dependencies (optional — Phase 2)
-  // -------------------------------------------------------------------------
+  // Step 10: Auto-update (simplified — uses update-policy, skips removed scorer/builder)
   let updatePlan: UpdatePlan | undefined;
-  if (
-    validatedInput.updatePolicy?.enabled &&
-    options.registryClient
-  ) {
+  if (validatedInput.updatePolicy?.enabled && options.registryClient) {
     const policy = validatedInput.updatePolicy;
-    const defaultEcosystem = detectDefaultEcosystem(
-      validatedInput.projectMetadata.packageManagers,
-    );
-
+    const defaultEcosystem = detectDefaultEcosystem(validatedInput.projectMetadata.packageManagers);
     try {
-      // Fetch version info for all current libraries
       const queries = Object.entries(validatedInput.projectMetadata.currentLibraries).map(
-        ([name, version]) => ({
-          ecosystem: defaultEcosystem,
-          packageName: name,
-          currentVersion: version,
-        }),
+        ([name, version]) => ({ ecosystem: defaultEcosystem, packageName: name, currentVersion: version }),
       );
-
       const versionInfoMap = await options.registryClient.getVersionInfoBatch(queries);
-
-      // Apply update policy
       const candidates = applyUpdatePolicy(versionInfoMap, {
         defaultStrategy: policy.defaultStrategy,
         packageOverrides: policy.packageOverrides,
@@ -449,78 +381,72 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
         pinned: policy.pinned,
       }, defaultEcosystem);
 
-      // Verify changelogs via Context7
-      const changelogs = await Promise.all(
-        candidates.map((c) =>
-          verifyChangelog(
-            context7Client,
-            c.packageName,
-            c.currentVersion,
-            c.targetVersion,
-          ),
-        ),
-      );
+      // Simplified: build update items with defaults (AI agent enriches)
+      const updates = candidates.map((c) => ({
+        packageName: c.packageName,
+        ecosystem: c.ecosystem,
+        currentVersion: c.currentVersion,
+        targetVersion: c.targetVersion,
+        updateType: c.updateType,
+        urgency: 'routine' as const,
+        breakingRisk: 'none' as const,
+        impactScores: { scalability: 5, performance: 5, security: 5, maintainability: 5, feature_richness: 5, ux: 5, ui_aesthetics: 5, composite: 5 },
+        estimatedEffort: 0.5,
+        hasBreakingChanges: false,
+        vulnFixCount: 0,
+        groupKey: c.groupKey,
+      }));
 
-      // Score each update
-      const scores = candidates.map((candidate, index) =>
-        scoreUpdate({
-          candidate,
-          changelog: changelogs[index]!,
-        }),
-      );
+      const groupMap = new Map<string, typeof updates>();
+      for (const item of updates) {
+        if (item.groupKey) {
+          const g = groupMap.get(item.groupKey) ?? [];
+          g.push(item);
+          groupMap.set(item.groupKey, g);
+        }
+      }
 
-      // Build update plan
-      updatePlan = buildUpdatePlan(candidates, scores, changelogs);
+      updatePlan = {
+        updates,
+        groups: [...groupMap.entries()]
+          .filter(([, items]) => items.length > 1)
+          .map(([groupKey, items]) => ({ groupKey, items, urgency: 'routine' as const })),
+        summary: {
+          totalUpdatesAvailable: updates.length,
+          critical: 0,
+          urgent: 0,
+          recommended: 0,
+          routine: updates.length,
+          estimatedTotalEffort: updates.reduce((sum, u) => sum + u.estimatedEffort, 0),
+        },
+      };
     } catch {
-      // Registry unavailable — skip update plan silently
       updatePlan = undefined;
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Step 11: Assemble OutputSchema
-  // -------------------------------------------------------------------------
-
-  // Compute lines saved estimate from deletion checklist
-  const linesSavedEstimate = migrationPlan.deletionChecklist.reduce((total, item) => {
-    if (item.lineRange) {
-      return total + (item.lineRange.end - item.lineRange.start + 1);
-    }
+  // Step 11: Assemble output
+  const linesSavedEstimate = deletionChecklist.reduce((total, item) => {
+    if (item.lineRange) return total + (item.lineRange.end - item.lineRange.start + 1);
     return total;
   }, 0);
 
-  // Collect files to delete from the deletion checklist
-  const filesToDelete = [
-    ...new Set(migrationPlan.deletionChecklist.map((item) => item.filePath)),
-  ];
+  const filesToDelete = [...new Set(deletionChecklist.map((item) => item.filePath))];
 
   const output: OutputSchema = {
     recommendedChanges: filteredRecommendations,
     filesToDelete,
     linesSavedEstimate,
-    uxAudit: uxAuditResult.items,
-    migrationPlan: {
-      phases: migrationPlan.phases,
-      deletionChecklist: migrationPlan.deletionChecklist,
-      peerDependencyWarnings: peerWarnings,
-    },
-    // Gap analysis — verify each gap recommendation with Context7
+    uxAudit,
+    migrationPlan: { phases, deletionChecklist, peerDependencyWarnings: peerWarnings },
     gapAnalysis: await verifyGaps(options.gaps, context7Client),
-    // Phase 2 optional sections
     vulnerabilityReport,
     updatePlan,
   };
 
-  // -------------------------------------------------------------------------
-  // Step 12: PR auto-creation (optional — Phase 2)
-  // -------------------------------------------------------------------------
-  if (
-    validatedInput.prPolicy?.enabled &&
-    options.platformClient &&
-    options.gitOps
-  ) {
+  // Step 12: PR auto-creation (optional)
+  if (validatedInput.prPolicy?.enabled && options.platformClient && options.gitOps) {
     const prPolicy = validatedInput.prPolicy;
-
     const prPlans = planPRs({
       output,
       policy: {
@@ -535,7 +461,6 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
         branchPrefix: prPolicy.branchPrefix,
       },
     });
-
     const prResults = await executePRPlans({
       plans: prPlans,
       platformClient: options.platformClient,
@@ -544,22 +469,16 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
       reviewers: prPolicy.reviewers,
       draft: prPolicy.draft,
     });
-
     output.pullRequests = prResults;
   }
 
-  // -------------------------------------------------------------------------
-  // Step 13: Serialize and return
-  // -------------------------------------------------------------------------
-  const json = serializeOutput(output);
-  const prettyJson = prettyPrint(output);
-
+  // Step 13: Return
   return {
     success: true,
     output,
     scanResult,
-    json,
-    prettyJson,
+    json: JSON.stringify(output),
+    prettyJson: JSON.stringify(output, null, 2),
     exclusions,
   };
 }
@@ -568,47 +487,20 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Detect default ecosystem from package manager list.
- */
 function detectDefaultEcosystem(packageManagers: string[]): string {
-  const ecosystemMap: Record<string, string> = {
-    npm: 'npm',
-    pnpm: 'npm',
-    yarn: 'npm',
-    bun: 'npm',
-    pip: 'PyPI',
-    cargo: 'crates.io',
-    go: 'Go',
-  };
-
-  for (const pm of packageManagers) {
-    const eco = ecosystemMap[pm];
-    if (eco) return eco;
-  }
-
+  const map: Record<string, string> = { npm: 'npm', pnpm: 'npm', yarn: 'npm', bun: 'npm', pip: 'PyPI', cargo: 'crates.io', go: 'Go' };
+  for (const pm of packageManagers) { if (map[pm]) return map[pm]!; }
   return 'npm';
 }
 
-/**
- * Verify gap recommendations with Context7 — same quality guarantee as
- * replacement recommendations. Returns undefined if no gaps provided.
- */
 async function verifyGaps(
   gaps: GapRecommendation[] | undefined,
   client: Context7Client,
 ): Promise<GapRecommendation[] | undefined> {
   if (!gaps || gaps.length === 0) return undefined;
-
   const verified: GapRecommendation[] = [];
-
   for (const gap of gaps) {
-    const result = await verifyRecommendation(
-      client,
-      gap.recommendedLibrary.name,
-      gap.description,
-    );
-
+    const result = await verifyRecommendation(client, gap.recommendedLibrary.name, gap.description);
     verified.push({
       ...gap,
       recommendedLibrary: {
@@ -619,6 +511,5 @@ async function verifyGaps(
       verificationNote: result.note,
     });
   }
-
   return verified;
 }

@@ -12,7 +12,7 @@ import { planPRs, type PRPolicy } from '../src/pr-creator/pr-strategy.js';
 import {
   buildPRTitle,
   buildPRDescription,
-} from '../src/pr-creator/pr-description-builder.js';
+} from '../src/pr-creator/pr-executor.js';
 import { executePRPlans } from '../src/pr-creator/pr-executor.js';
 import type {
   OutputSchema,
@@ -309,7 +309,6 @@ describe('buildPRTitle', () => {
 
     const title = buildPRTitle(plan);
     expect(title).toMatch(/^fix\(deps\):/);
-    expect(title).toContain('lodash');
   });
 
   it('should format dependency update title', () => {
@@ -352,7 +351,7 @@ describe('buildPRTitle', () => {
     })[0]!;
 
     const title = buildPRTitle(plan);
-    expect(title).toMatch(/^refactor\(/);
+    expect(title).toMatch(/^refactor:/);
   });
 });
 
@@ -378,9 +377,8 @@ describe('buildPRDescription', () => {
     })[0]!;
 
     const body = buildPRDescription(plan);
-    expect(body).toContain('Summary');
-    expect(body).toContain('Checklist');
-    expect(body).toContain('Next-Unicorn');
+    expect(body).toContain('change(s)');
+    expect(body).toContain('Update');
   });
 });
 

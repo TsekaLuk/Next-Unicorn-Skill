@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 import { planPRs, type PRPolicy } from '../src/pr-creator/pr-strategy.js';
-import { buildPRTitle } from '../src/pr-creator/pr-description-builder.js';
+import { buildPRTitle } from '../src/pr-creator/pr-executor.js';
 import type { OutputSchema, UpdateItem, UpdateGroup } from '../src/schemas/output.schema.js';
 
 // ---------------------------------------------------------------------------

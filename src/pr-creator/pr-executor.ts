@@ -9,7 +9,31 @@ import type { PRResult, PRSummary } from '../schemas/output.schema.js';
 import type { PRPlan } from './pr-strategy.js';
 import type { PlatformClient } from './platform-client.js';
 import type { GitOperations } from './git-operations.js';
-import { buildPRTitle, buildPRDescription } from './pr-description-builder.js';
+// PR title/description generation inlined — AI agent writes better descriptions
+export function buildPRTitle(plan: PRPlan): string {
+  const count = plan.items.length;
+  switch (plan.type) {
+    case 'security-update': return `fix(deps): patch ${count} security vulnerabilit${count === 1 ? 'y' : 'ies'}`;
+    case 'dependency-update': return `chore(deps): update ${count} dependenc${count === 1 ? 'y' : 'ies'}`;
+    case 'migration': return `refactor: migrate ${count} hand-rolled implementation${count === 1 ? '' : 's'}`;
+    case 'grouped-update': return `chore(deps): update ${plan.items[0]?.kind === 'update' ? plan.items[0].update.packageName : 'dependencies'} group`;
+    default: return `chore(deps): update ${count} item${count === 1 ? '' : 's'}`;
+  }
+}
+
+export function buildPRDescription(plan: PRPlan): string {
+  const lines = [`## ${buildPRTitle(plan)}`, '', `This PR contains ${plan.items.length} change(s).`, ''];
+  for (const item of plan.items) {
+    if (item.kind === 'update') {
+      lines.push(`- Update \`${item.update.packageName}\` ${item.update.currentVersion} → ${item.update.targetVersion}`);
+    } else if (item.kind === 'security') {
+      lines.push(`- Fix \`${item.update.packageName}\` (security)`);
+    } else if (item.kind === 'migration') {
+      lines.push(`- Migrate \`${item.recommendation.currentImplementation.patternCategory}\` in \`${item.recommendation.currentImplementation.filePath}\``);
+    }
+  }
+  return lines.join('\n');
+}
 
 // ---------------------------------------------------------------------------
 // Public interfaces

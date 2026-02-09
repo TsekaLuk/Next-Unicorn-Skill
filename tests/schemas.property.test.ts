@@ -2,9 +2,8 @@ import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { OutputSchema } from '../src/schemas/output.schema.js';
 import { InputSchema } from '../src/schemas/input.schema.js';
-import { parseSkillMd, serializeSkillMd } from '../src/utils/skill-parser.js';
-import type { SkillDocument } from '../src/utils/skill-parser.js';
-import { prettyPrint } from '../src/utils/serializer.js';
+// serializer and skill-parser removed (Occam's Razor) — inline equivalents
+function prettyPrint(output: unknown): string { return JSON.stringify(output, null, 2); }
 
 // ---------------------------------------------------------------------------
 // Arbitraries — reusable generators for schema types
@@ -410,67 +409,7 @@ describe('Feature: next-unicorn, Property 3: Schema validation rejects invalid i
 });
 
 
-// ---------------------------------------------------------------------------
-// Arbitraries for SkillDocument
-// ---------------------------------------------------------------------------
-
-/**
- * Safe string for YAML frontmatter values.
- * Avoids characters that would break our simple YAML parser:
- * - No newlines (would break line-based parsing)
- * - No `---` sequences (would be mistaken for delimiters)
- * - Non-empty, reasonable length
- */
-const yamlSafeString = fc
-  .stringMatching(/^[a-zA-Z0-9 _.,!?()-]{1,50}$/)
-  .filter((s) => !s.includes('---'));
-
-/** Tag string — simple alphanumeric with hyphens */
-const tagString = fc.stringMatching(/^[a-z0-9-]{1,20}$/);
-
-/** Markdown body — lines of safe text, no frontmatter delimiters */
-const markdownBody = fc
-  .array(
-    fc.stringMatching(/^[a-zA-Z0-9 _.,!?#*\-(){}\[\]|/\\@$%^&+=:;'"<>~`]{0,80}$/),
-    { minLength: 1, maxLength: 10 },
-  )
-  .map((lines) => lines.join('\n'))
-  .filter((body) => !body.includes('\n---\n') && !body.startsWith('---'));
-
-const skillDocumentArb: fc.Arbitrary<SkillDocument> = fc.record({
-  frontmatter: fc.record({
-    name: yamlSafeString,
-    description: yamlSafeString,
-    version: fc.stringMatching(/^[0-9]+\.[0-9]+\.[0-9]+$/),
-    author: yamlSafeString,
-    tags: fc.array(tagString, { minLength: 0, maxLength: 5 }),
-  }),
-  body: markdownBody,
-});
-
-// ---------------------------------------------------------------------------
-// Property 2: SKILL.md parse/serialize round-trip
-// ---------------------------------------------------------------------------
-
-describe('Feature: next-unicorn, Property 2: SKILL.md parse/serialize round-trip', () => {
-  it('serializing then parsing a SkillDocument produces a deeply equal object', () => {
-    fc.assert(
-      fc.property(skillDocumentArb, (original) => {
-        // Serialize to SKILL.md string
-        const serialized = serializeSkillMd(original);
-
-        // Parse back
-        const parsed = parseSkillMd(serialized);
-
-        // Assert deep equality
-        expect(parsed).toEqual(original);
-      }),
-      { numRuns: 100 },
-    );
-  });
-
-  /** Validates: Requirements 8.5 */
-});
+// skill-parser tests removed (module deleted — dead code)
 
 // ---------------------------------------------------------------------------
 // Property 14: Pretty-printed JSON uses consistent indentation

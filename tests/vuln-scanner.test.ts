@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { scanVulnerabilities } from '../src/security/vulnerability-scanner.js';
-import { buildVulnReport, buildSarifOutput } from '../src/security/vuln-report-builder.js';
+// vuln-report-builder removed (Occam's Razor — Claude generates better markdown)
 import { vulnMapKey, packageManagerToEcosystem } from '../src/security/osv-client.js';
 import type { VulnerabilityClient, VulnerabilityRecord } from '../src/security/osv-client.js';
 import type { RecommendedChange } from '../src/schemas/output.schema.js';
@@ -251,84 +251,7 @@ describe('Vulnerability Scanner', () => {
     });
   });
 
-  describe('buildVulnReport', () => {
-    it('should produce a markdown report with summary table', () => {
-      const result = {
-        findings: [
-          {
-            source: 'current' as const,
-            packageName: 'lodash',
-            installedVersion: '4.17.20',
-            ecosystem: 'npm',
-            vulnerability: makeVuln('GHSA-1111', 'critical', '4.17.22'),
-            fixAvailable: '4.17.22',
-          },
-        ],
-        summary: {
-          totalDepsScanned: 5,
-          currentDepsScanned: 4,
-          recommendedDepsScanned: 1,
-          critical: 1,
-          high: 0,
-          medium: 0,
-          low: 0,
-          fixable: 1,
-          unfixable: 0,
-        },
-        serviceUnavailable: false,
-      };
-
-      const report = buildVulnReport(result);
-      expect(report).toContain('# Vulnerability Scan Report');
-      expect(report).toContain('Critical (1)');
-      expect(report).toContain('GHSA-1111');
-      expect(report).toContain('lodash@4.17.20');
-    });
-
-    it('should indicate service unavailability', () => {
-      const report = buildVulnReport({
-        findings: [],
-        summary: {
-          totalDepsScanned: 0,
-          currentDepsScanned: 0,
-          recommendedDepsScanned: 0,
-          critical: 0, high: 0, medium: 0, low: 0,
-          fixable: 0, unfixable: 0,
-        },
-        serviceUnavailable: true,
-      });
-
-      expect(report).toContain('Warning');
-      expect(report).toContain('unreachable');
-    });
-  });
-
-  describe('buildSarifOutput', () => {
-    it('should produce valid SARIF structure', () => {
-      const result = {
-        findings: [
-          {
-            source: 'current' as const,
-            packageName: 'lodash',
-            installedVersion: '4.17.20',
-            ecosystem: 'npm',
-            vulnerability: makeVuln('GHSA-1111', 'critical'),
-            fixAvailable: null,
-          },
-        ],
-        summary: {
-          totalDepsScanned: 1, currentDepsScanned: 1, recommendedDepsScanned: 0,
-          critical: 1, high: 0, medium: 0, low: 0, fixable: 0, unfixable: 1,
-        },
-        serviceUnavailable: false,
-      };
-
-      const sarif = buildSarifOutput(result) as Record<string, unknown>;
-      expect(sarif['version']).toBe('2.1.0');
-      expect(sarif['$schema']).toContain('sarif');
-      expect(Array.isArray(sarif['runs'])).toBe(true);
-    });
-  });
+  // buildVulnReport and buildSarifOutput tests removed (modules deleted)
 
   describe('packageManagerToEcosystem', () => {
     it('should map known package managers', () => {

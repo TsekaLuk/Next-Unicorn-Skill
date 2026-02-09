@@ -117,7 +117,7 @@ afterEach(() => {
 
 describe('VERSION export', () => {
   it('still exports VERSION alongside the orchestrator', () => {
-    expect(VERSION).toBe('1.0.5');
+    expect(VERSION).toBe('1.0.6');
   });
 });
 
@@ -201,7 +201,7 @@ describe('analyze — end-to-end success', () => {
     expect(parsed.migrationPlan.deletionChecklist).toBeInstanceOf(Array);
   });
 
-  it('includes all 8 UX audit categories in output', async () => {
+  it('uxAudit defaults to empty array (AI agent fills it)', async () => {
     writeFile('src/index.ts', 'export const x = 1;');
 
     const result = await analyze({
@@ -213,16 +213,8 @@ describe('analyze — end-to-end success', () => {
     expect(result.success).toBe(true);
     if (!result.success) return;
 
-    const categories = result.output.uxAudit.map((item) => item.category);
-    expect(categories).toContain('accessibility');
-    expect(categories).toContain('error-states');
-    expect(categories).toContain('empty-states');
-    expect(categories).toContain('loading-states');
-    expect(categories).toContain('form-validation');
-    expect(categories).toContain('performance-feel');
-    expect(categories).toContain('copy-consistency');
-    expect(categories).toContain('design-system-alignment');
-    expect(categories.length).toBe(8);
+    // UX audit is now AI-agent-driven — empty by default
+    expect(result.output.uxAudit).toEqual([]);
   });
 
   it('each recommended change has valid verification status', async () => {
@@ -427,7 +419,7 @@ describe('analyze — empty codebase', () => {
     expect(result.success).toBe(true);
     if (!result.success) return;
 
-    expect(result.output.uxAudit.length).toBe(8);
+    expect(result.output.uxAudit).toEqual([]);
   });
 });
 

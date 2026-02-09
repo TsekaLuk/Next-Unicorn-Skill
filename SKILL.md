@@ -64,11 +64,13 @@ Provide each gap as a `GapRecommendation`. Read `src/index.ts` for the interface
 
 For each scanner detection, recommend a **solution**. Consider:
 
-1. **Ecosystem composition** — recommend companion libraries that work together
-2. **Rationale** — explain WHY this choice fits this project's framework, runtime, and scale
-3. **Anti-patterns** — what NOT to use and why
-4. **Alternatives** — different solutions for different architectural contexts
-5. **Context7 verification** — call `resolve-library-id` + `query-docs` to confirm the library exists and get latest version/docs
+1. **Stack coherence** — don't recommend libraries in isolation; consider how they fit the project's overall stack (e.g., recommending Stripe should trigger consideration of Resend for transactional email and PostHog for payment funnel analytics)
+2. **Ecosystem composition** — recommend companion libraries that work together
+3. **Rationale** — explain WHY this choice fits this project's framework, runtime, and scale
+4. **Anti-patterns** — what NOT to use and why
+5. **Alternatives** — different solutions for different architectural contexts
+6. **Migration snippet** — for each recommendation, read the detected code (file path + line range from scanner) and generate a concrete before/after code example showing the migration
+7. **Context7 verification** — call `resolve-library-id` + `query-docs` to confirm the library exists and get latest version/docs
 
 Read `src/index.ts` for the `LibraryRecommendation` interface. Return `null` to skip a detection.
 
@@ -78,21 +80,13 @@ Read `src/index.ts` for the `LibraryRecommendation` interface. Return `null` to 
 - Library is already in project dependencies (suggest version update instead)
 - Hand-rolled code is simpler than the library (3-line utility vs 50KB dep)
 
-### Step 4: Score Impact
+### Step 4–7: Score, Plan, Audit, Serialize
 
-Call `computeImpactScore()` for each detection. Optionally provide `dimensionHints` and `baseEffortHours` for more accurate scoring. Read `src/scorer/impact-scorer.ts` for the interface.
-
-### Step 5: Build Migration Plan
-
-Call `buildMigrationPlan()` to group recommendations into phases by risk (low, medium, high). High-risk items include adapter strategies.
-
-### Step 6: Audit UX Completeness
-
-Call `auditUxCompleteness()` to evaluate 8 UX categories. The auditor determines status (present/partial/missing). Fill in `recommendedLibrary` on partial/missing items based on project context.
-
-### Step 7: Apply Constraints and Serialize
-
-Filter by license allowlist, detect dependency conflicts, serialize to JSON.
+The pipeline handles these automatically:
+- **Scoring**: confidence-based dimension scores (overridable by AI agent via `dimensionHints`)
+- **Migration plan**: auto-grouped by risk (low/medium/high), sorted by file co-location
+- **UX audit**: provide via `uxAudit` option in `analyze()`. Evaluate 8 categories: accessibility, error/empty/loading states, form validation, performance feel, copy consistency, design system alignment. For each, assess status (present/partial/missing) based on project code and `currentLibraries`.
+- **Constraints**: license allowlist filtering, dependency conflict detection, JSON serialization
 
 ### Optional Steps
 
