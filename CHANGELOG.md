@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] - 2026-02-09
+
+### Added
+
+- **Human-in-the-loop Gate Protocol** — 4 explicit decision gates at irreversible, preference-driven, or costly decision points:
+  - Gate 1: Triage detections before Context7 verification (saves quota)
+  - Gate 2: Code organization preferences with SWOT analysis (team preferences)
+  - Gate 3: Accept/reject/defer recommendations (migration cost decisions)
+  - Gate 4: Confirm before PR creation and file migration (irreversible actions)
+- New `references/code-organization-workflow.md` — progressive disclosure reference with Gate examples, Phase A/B decision tree, and worked examples
+
+### Changed
+
+- SKILL.md refactored from 400 to 188 lines — verbose Gate/code-org examples extracted to references/ per progressive disclosure spec
+- Removed stale `org-mixed-export-style` reference from Phase A (pattern was moved to structural analyzer)
+- Gate Protocol compressed from 35 lines to 8 lines (meta-info)
+- All instructions converted to imperative voice per skill spec
+
 ## [1.0.7] - 2026-02-09
 
 ### Added
