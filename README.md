@@ -147,15 +147,62 @@ Or use as an **MCP SKILL** — provide [`SKILL.md`](./SKILL.md) to your AI agent
 
 ## How It Works
 
-```
-Input ─> Validator ─> Scanner + Structure Analyzer
-  ─> Gap Analysis (AI Agent) ─> Recommender (AI Agent) ─> Context7 Verifier
-  ─> Impact Scorer ─> Conflict Detection ─> Vuln Scanner ─> License Filter
-  ─> Migration Planner ─> UX Auditor ─> Auto-Updater
-  ─> Serializer ─> PR Creator ─> Output
+### Architecture Diagram
+
+```mermaid
+flowchart TB
+    subgraph input [Input]
+        I[InputSchema JSON]
+    end
+
+    subgraph deterministic [Deterministic Layer — TypeScript]
+        V[Zod Validator]
+        S[Scanner — 40+ regex patterns across 30 domains]
+        SA[Structure Analyzer — monorepo architecture, dependency flow, token layers]
+        C7[Context7 Verifier — exponential backoff, query ranking]
+        VS[Vuln Scanner — OSV database]
+        PC[Peer Checker — semver range validation]
+        PR[PR Strategy + Executor]
+    end
+
+    subgraph agent [AI Agent Layer — Claude generalization]
+        GA[Gap Analysis — single library / ecosystem / architecture gaps]
+        REC[Recommender — ecosystem-level solutions with rationale]
+        UX[UX Audit — 8 categories]
+        DS{Design System?}
+        DSE[Extract from existing code]
+        DSS[Scaffold from reference repos]
+    end
+
+    subgraph output [Output]
+        O[OutputSchema JSON]
+    end
+
+    I --> V --> S
+    S --> SA
+    S --> REC
+    SA --> GA
+    GA --> DS
+    DS -->|Existing frontend| DSE
+    DS -->|No frontend| DSS
+    GA --> O
+    REC --> C7 --> O
+    S --> PC --> O
+    S --> VS --> O
+    UX --> O
+    O --> PR
 ```
 
-**Key architecture**: The scanner detects WHAT is hand-rolled; the structure analyzer detects architectural gaps; the **Recommender** (AI agent or caller) decides WHAT to use. No library recommendations are hardcoded — they are provided dynamically based on project context, ecosystem knowledge, and Context7 verification.
+### Design Principles
+
+| Principle | Implementation |
+|-----------|---------------|
+| **Occam's Razor** | Only 16 TS modules remain — each does something Claude cannot (regex, semver, file I/O, API calls). Scoring, planning, UX audit, PR descriptions are AI-agent-driven. |
+| **No hardcoded recommendations** | Pattern catalog contains zero library names. The `Recommender` callback and `GapRecommendation` are filled by the AI agent at runtime. |
+| **Context7 best practices** | Exponential backoff (3 retries), query parameter for ranking, per-library isolation. Both replacements and gaps are verified. |
+| **Progressive disclosure** | SKILL.md is 111 lines. `references/` files load only when design system gaps are detected. |
+| **Two analysis modes** | **Replacement**: scanner finds hand-rolled code → agent recommends library. **Gap**: agent identifies missing capabilities → verified via Context7. |
+| **Design system support** | Structure analyzer detects missing layers. Two paths: scaffold from 25+ reference repos, or extract spec from existing code (6 principles, 5 phases). |
 
 Each stage is a pure function with structured I/O. All external dependencies (Context7, OSV, npm registry, GitHub API) are **injected via interfaces** for testability.
 
