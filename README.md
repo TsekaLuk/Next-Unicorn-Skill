@@ -7,12 +7,19 @@
 </p>
 
 <p align="center">
+  <a href="https://smithery.ai/skills/nebutra/next-unicorn-skill"><img src="https://img.shields.io/badge/Smithery-Next--Unicorn-orange.svg" alt="Smithery" /></a>
   <a href="https://github.com/Nebutra/Next-Unicorn-Skill/actions/workflows/ci.yml"><img src="https://github.com/Nebutra/Next-Unicorn-Skill/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://www.npmjs.com/package/@nebutra/next-unicorn-skill"><img src="https://img.shields.io/npm/v/@nebutra/next-unicorn-skill.svg?color=blue" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/@nebutra/next-unicorn-skill"><img src="https://img.shields.io/npm/dm/@nebutra/next-unicorn-skill.svg?color=green" alt="npm downloads" /></a>
+  <a href="https://github.com/Nebutra/Next-Unicorn-Skill/stargazers"><img src="https://img.shields.io/github/stars/Nebutra/Next-Unicorn-Skill.svg?style=social" alt="GitHub Stars" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-blue.svg" alt="TypeScript" /></a>
   <a href="./tests/"><img src="https://img.shields.io/badge/tests-210%20passed-brightgreen.svg" alt="Tests" /></a>
   <a href="./tests/"><img src="https://img.shields.io/badge/properties-29%20verified-purple.svg" alt="Property Tests" /></a>
+</p>
+
+<p align="center">
+  <b>English</b> | <a href="./README.zh-CN.md">简体中文</a>
 </p>
 
 <p align="center">
@@ -37,7 +44,13 @@ Snyk, Dependabot, and Renovate manage your *existing* dependencies. They can't f
 
 ## Quick Start
 
-### From npmjs.org (recommended)
+### From Smithery (recommended)
+
+Browse and install directly from the Smithery skill registry:
+
+> **[Next-Unicorn on Smithery](https://smithery.ai/skills/nebutra/next-unicorn-skill)**
+
+### From npmjs.org
 
 ```bash
 npm install @nebutra/next-unicorn-skill
@@ -408,9 +421,36 @@ pnpm build         # Compile to dist/
 | [`design-system-sources.md`](./references/design-system-sources.md) | 25+ curated design system repos for scaffolding (Primer, Polaris, Dub, Supabase, etc.) |
 | [`design-system-extraction.md`](./references/design-system-extraction.md) | Workflow for extracting a design system from existing code (6 principles, 5 phases) |
 
+<!-- TODO: P1 — 项目 Logo: 设计一个 Logo 放在 README 顶部，同时用作 GitHub Social Preview -->
+<!-- TODO: P1 — Social Preview / OG Image: 到 GitHub repo Settings → Social preview 上传卡片图 -->
+<!-- TODO: P1 — Demo GIF: 录制 30 秒终端演示动图，放在 Quick Start 上方 -->
+<!-- TODO: P0 — GitHub Topics: 到 GitHub repo Settings → Topics 添加: mcp, ai-agent, claude-code, codebase-analysis, dependency-management, vulnerability-scanning, migration, context7, vibe-coding, skill -->
+<!-- TODO: P2 — Coverage 徽章: 配置 Codecov 或 Coveralls，在 CI 中上传覆盖率报告 -->
+<!-- TODO: P2 — Twitter/X: 创建项目 Twitter 账号或用个人账号发布公告，在 README 添加链接 -->
+<!-- TODO: P2 — Discord: 创建 Discord 服务器，在 README 添加邀请链接徽章 -->
+<!-- TODO: P3 — Awesome Lists: 提交 PR 到 awesome-mcp、awesome-claude-code、awesome-ai-tools 等列表 -->
+<!-- TODO: P3 — Product Hunt: 在 producthunt.com 发布项目 -->
+<!-- TODO: P3 — Hacker News: 发布 Show HN 帖子 -->
+<!-- TODO: P3 — GitHub Discussions: 到 GitHub repo Settings → Features → Discussions 开启 -->
+<!-- TODO: P3 — "Who's Using" 展示区: 有用户后在 README 加 logo 墙 -->
+
+## Star History
+
+<a href="https://star-history.com/#Nebutra/Next-Unicorn-Skill&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Nebutra/Next-Unicorn-Skill&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Nebutra/Next-Unicorn-Skill&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Nebutra/Next-Unicorn-Skill&type=Date" />
+ </picture>
+</a>
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, architecture overview, and contribution guidelines.
+
+## Security
+
+See [SECURITY.md](./SECURITY.md) for our security policy and how to report vulnerabilities.
 
 ## Releasing
 
@@ -431,4 +471,4 @@ See [CHANGELOG.md](./CHANGELOG.md) for version history.
 
 ## License
 
-[MIT](./LICENSE) &copy; [TsekaLuk](https://github.com/TsekaLuk)
+[MIT](./LICENSE) &copy; [Nebutra](https://github.com/Nebutra)
