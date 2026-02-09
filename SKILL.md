@@ -94,6 +94,14 @@ The pipeline handles these automatically:
 - **Step 9**: Auto-update existing dependencies (`registryClient`)
 - **Step 10**: PR auto-creation via GitHub/GitLab (`platformClient` + `gitOps`)
 
+## MCP Integration
+
+Prefer MCP tools when available; fall back to shell commands if not.
+
+- **Context7 MCP** (required) — `resolve-library-id` + `query-docs` for library verification
+- **GitHub MCP** (preferred for PRs) — structured PR create/update/query; fallback: `gh` CLI
+- **Git MCP / GitKraken MCP** (preferred for scaffold) — structured repo browse/sparse-checkout; fallback: `git` CLI
+
 ## Output
 
 Single `OutputSchema` JSON containing:
