@@ -9,7 +9,7 @@
 | Urgent (deprecated/security) | {{urgent}} |
 | Recommended (new features) | {{recommended}} |
 | Routine (patches) | {{routine}} |
-| Estimated total effort | {{estimatedTotalEffort}}h |
+| Total affected files | {{totalAffectedFiles}} |
 
 ## Critical Updates (Action Required)
 
@@ -20,7 +20,7 @@
 - **Urgency:** {{urgency}}
 - **Breaking risk:** {{breakingRisk}}
 - **Vulnerabilities fixed:** {{vulnFixCount}}
-- **Estimated effort:** {{estimatedEffort}}h
+- **Affected files:** {{affectedFiles}}
 
 | Dimension | Score |
 |-----------|-------|
@@ -47,7 +47,7 @@
 ## Routine Updates
 
 {{#each routineUpdates}}
-- **{{packageName}}:** {{currentVersion}} -> {{targetVersion}} ({{updateType}}, {{estimatedEffort}}h)
+- **{{packageName}}:** {{currentVersion}} -> {{targetVersion}} ({{updateType}}, {{affectedFiles}} files)
 {{/each}}
 
 ## Update Policy

@@ -44,7 +44,7 @@ function makeUpdateItem(
       maintainability: 5, feature_richness: 5, ux: 5,
       ui_aesthetics: 5, composite: 5,
     },
-    estimatedEffort: 1,
+    affectedFiles: 1,
     hasBreakingChanges: false,
     vulnFixCount: 0,
     groupKey,
@@ -67,7 +67,7 @@ function makeRecommendation(): RecommendedChange {
       ui_aesthetics: 5, composite: 6.1,
     },
     migrationRisk: 'low',
-    estimatedEffort: 4,
+    affectedFiles: 4,
     verificationStatus: 'verified',
   };
 }
@@ -149,7 +149,7 @@ describe('planPRs', () => {
         summary: {
           totalUpdatesAvailable: 2,
           critical: 1, urgent: 0, recommended: 0, routine: 1,
-          estimatedTotalEffort: 2,
+          totalAffectedFiles: 2,
         },
       },
     });
@@ -173,7 +173,7 @@ describe('planPRs', () => {
         summary: {
           totalUpdatesAvailable: 2,
           critical: 1, urgent: 0, recommended: 0, routine: 1,
-          estimatedTotalEffort: 2,
+          totalAffectedFiles: 2,
         },
       },
     });
@@ -225,7 +225,7 @@ describe('planPRs', () => {
         summary: {
           totalUpdatesAvailable: 20,
           critical: 0, urgent: 0, recommended: 0, routine: 20,
-          estimatedTotalEffort: 20,
+          totalAffectedFiles: 20,
         },
       },
     });
@@ -250,7 +250,7 @@ describe('planPRs', () => {
         summary: {
           totalUpdatesAvailable: 3,
           critical: 1, urgent: 0, recommended: 0, routine: 2,
-          estimatedTotalEffort: 3,
+          totalAffectedFiles: 3,
         },
       },
     });
@@ -270,7 +270,7 @@ describe('planPRs', () => {
         summary: {
           totalUpdatesAvailable: 5,
           critical: 0, urgent: 0, recommended: 0, routine: 5,
-          estimatedTotalEffort: 5,
+          totalAffectedFiles: 5,
         },
       },
     });
@@ -300,7 +300,7 @@ describe('buildPRTitle', () => {
           summary: {
             totalUpdatesAvailable: 1,
             critical: 1, urgent: 0, recommended: 0, routine: 0,
-            estimatedTotalEffort: 1,
+            totalAffectedFiles: 1,
           },
         },
       }),
@@ -320,7 +320,7 @@ describe('buildPRTitle', () => {
           summary: {
             totalUpdatesAvailable: 1,
             critical: 0, urgent: 0, recommended: 0, routine: 1,
-            estimatedTotalEffort: 1,
+            totalAffectedFiles: 1,
           },
         },
       }),
@@ -369,7 +369,7 @@ describe('buildPRDescription', () => {
           summary: {
             totalUpdatesAvailable: 1,
             critical: 0, urgent: 0, recommended: 0, routine: 1,
-            estimatedTotalEffort: 1,
+            totalAffectedFiles: 1,
           },
         },
       }),
@@ -395,7 +395,7 @@ describe('executePRPlans', () => {
         summary: {
           totalUpdatesAvailable: 1,
           critical: 0, urgent: 0, recommended: 0, routine: 1,
-          estimatedTotalEffort: 1,
+          totalAffectedFiles: 1,
         },
       },
     });
@@ -445,7 +445,7 @@ describe('executePRPlans', () => {
         summary: {
           totalUpdatesAvailable: 1,
           critical: 0, urgent: 0, recommended: 0, routine: 1,
-          estimatedTotalEffort: 1,
+          totalAffectedFiles: 1,
         },
       },
     });
@@ -484,7 +484,7 @@ describe('executePRPlans', () => {
         summary: {
           totalUpdatesAvailable: 1,
           critical: 0, urgent: 0, recommended: 0, routine: 1,
-          estimatedTotalEffort: 1,
+          totalAffectedFiles: 1,
         },
       },
     });

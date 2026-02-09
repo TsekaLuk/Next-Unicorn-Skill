@@ -49,7 +49,7 @@ function makeMinimalRecommendation(name: string, version: string): RecommendedCh
       ui_aesthetics: 5, composite: 5,
     },
     migrationRisk: 'low',
-    estimatedEffort: 1,
+    affectedFiles: 1,
     verificationStatus: 'verified',
   };
 }

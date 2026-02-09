@@ -82,7 +82,7 @@ const recommendedChangeArb = fc.record({
   domain: safeString,
   impactScores: impactScoresArb,
   migrationRisk: migrationRiskArb,
-  estimatedEffort: fc.double({ min: 0.01, max: 10000, noNaN: true, noDefaultInfinity: true }),
+  affectedFiles: fc.integer({ min: 0, max: 10000 }),
   adapterStrategy: fc.option(adapterStrategyArb, { nil: undefined }),
   verificationStatus: verificationStatusArb,
   verificationNote: fc.option(safeString, { nil: undefined }),

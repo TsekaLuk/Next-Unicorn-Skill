@@ -69,7 +69,7 @@ const recommendedChangeArb: fc.Arbitrary<RecommendedChange> = fc
     ui_aesthetics: dimensionScoreArb,
     composite: compositeScoreArb,
     migrationRisk: migrationRiskArb,
-    estimatedEffort: fc.double({ min: 0.1, max: 1000, noNaN: true, noDefaultInfinity: true }),
+    affectedFiles: fc.double({ min: 0.1, max: 1000, noNaN: true, noDefaultInfinity: true }),
     verificationStatus: fc.constantFrom(
       'verified' as const,
       'unverified' as const,
@@ -101,7 +101,7 @@ const recommendedChangeArb: fc.Arbitrary<RecommendedChange> = fc
       composite: r.composite,
     },
     migrationRisk: r.migrationRisk,
-    estimatedEffort: r.estimatedEffort,
+    affectedFiles: r.affectedFiles,
     verificationStatus: r.verificationStatus,
   }));
 

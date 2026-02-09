@@ -3,36 +3,16 @@ import fsPromises from 'node:fs/promises';
 import path from 'node:path';
 import type { InputSchema } from '../schemas/input.schema.js';
 import { getPatternCatalog, type PatternDefinition } from './pattern-catalog.js';
+import type {
+  Detection,
+  WorkspaceScan,
+  ScanResult,
+  StructuralFinding,
+  StructuralAnalysis,
+} from './types.js';
 
-// ---------------------------------------------------------------------------
-// Public interfaces
-// ---------------------------------------------------------------------------
-
-export interface Detection {
-  filePath: string;
-  lineRange: { start: number; end: number };
-  patternCategory: string;
-  confidenceScore: number;
-  domain: string;
-}
-
-export interface WorkspaceScan {
-  root: string;
-  packageManager: string;
-  language: string;
-  dependencies: Record<string, string>;
-}
-
-export interface ScanResult {
-  detections: Detection[];
-  workspaces: WorkspaceScan[];
-  /** Structural analysis of monorepo architecture (design system layers, dependency flow) */
-  structuralFindings?: import('./structure-analyzer.js').StructuralFinding[];
-  /** Detected design system layer info */
-  designSystemLayers?: import('./structure-analyzer.js').StructuralAnalysis['designSystemLayers'];
-  /** Code organization analysis stats */
-  codeOrganizationStats?: import('./code-organization-analyzer.js').CodeOrganizationAnalysis['stats'];
-}
+// Re-export types for backward compatibility
+export type { Detection, WorkspaceScan, ScanResult } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Workspace manifest files → package manager + language mapping
@@ -378,8 +358,8 @@ export async function scanCodebase(input: InputSchema): Promise<ScanResult> {
   }
 
   // ── Structural analysis (design system layers, dependency flow) ──
-  let structuralFindings: import('./structure-analyzer.js').StructuralFinding[] | undefined;
-  let designSystemLayers: import('./structure-analyzer.js').StructuralAnalysis['designSystemLayers'] | undefined;
+  let structuralFindings: StructuralFinding[] | undefined;
+  let designSystemLayers: StructuralAnalysis['designSystemLayers'] | undefined;
 
   if (workspaces.length > 1) {
     // Only run structural analysis for monorepos

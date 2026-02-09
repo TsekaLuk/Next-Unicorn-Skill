@@ -168,16 +168,16 @@ Recommendation: A — kebab-case, aligns with Next.js conventions (fewer renames
 GATE 3: Recommendations — Accept, defer, or reject each
 ────────────────────────────────────────────────────────
 
-| # | Domain | Replace what | With what | Risk | Effort | Context7 | Decision |
-|---|--------|-------------|-----------|:----:|:------:|:--------:|----------|
-| 1 | i18n | hand-rolled t() in 47 files | @lingui/core ^4.0 | low | 8h | verified | ? |
-| 2 | observability | console.log | pino ^9.0 | low | 4h | verified | ? |
-| 3 | state-mgmt | 5x useState chain | zustand ^5.0 | medium | 12h | verified | ? |
-| 4 | code-org | 3 circular deps | eslint-plugin-import + refactor | medium | 6h | verified | ? |
-| 5 | code-org | utils/ 23 files | split by domain (Gate 2 choice) | low | 3h | — | ? |
-| 6 | GAP | no error monitoring | Sentry ^8.0 | low | 2h | verified | ? |
+| # | Domain | Replace what | With what | Risk | Files | Context7 | Decision |
+|---|--------|-------------|-----------|:----:|:-----:|:--------:|----------|
+| 1 | i18n | hand-rolled t() in 47 files | @lingui/core ^4.0 | low | 47 | verified | ? |
+| 2 | observability | console.log | pino ^9.0 | low | 12 | verified | ? |
+| 3 | state-mgmt | 5x useState chain | zustand ^5.0 | medium | 5 | verified | ? |
+| 4 | code-org | 3 circular deps | eslint-plugin-import + refactor | medium | 6 | verified | ? |
+| 5 | code-org | utils/ 23 files | split by domain (Gate 2 choice) | low | 23 | — | ? |
+| 6 | GAP | no error monitoring | Sentry ^8.0 | low | 3 | verified | ? |
 
-Total estimated effort: 35h
+Total files affected: 96
 
 Options:
   A) Accept all → generate full migration plan

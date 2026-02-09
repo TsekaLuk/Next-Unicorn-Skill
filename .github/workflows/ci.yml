@@ -37,6 +37,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Circular dependency check
+        run: npx madge --circular --extensions ts src/
+
   build:
     name: Build
     runs-on: ubuntu-latest

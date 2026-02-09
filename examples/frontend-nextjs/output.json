@@ -25,7 +25,7 @@
         "composite": 8.1
       },
       "migrationRisk": "low",
-      "estimatedEffort": 12,
+      "affectedFiles": 12,
       "verificationStatus": "verified",
       "verificationNote": "Context7 confirmed next-intl supports App Router, RSC, and ICU message syntax"
     },
@@ -54,7 +54,7 @@
         "composite": 7.2
       },
       "migrationRisk": "low",
-      "estimatedEffort": 6,
+      "affectedFiles": 6,
       "verificationStatus": "verified",
       "verificationNote": "Context7 confirmed date-fns v3 supports tree-shaking and locale-aware formatting"
     },
@@ -83,7 +83,7 @@
         "composite": 6.4
       },
       "migrationRisk": "low",
-      "estimatedEffort": 4,
+      "affectedFiles": 4,
       "verificationStatus": "verified",
       "verificationNote": "Context7 confirmed next-seo supports JSON-LD, Open Graph, and Twitter cards"
     },
@@ -112,7 +112,7 @@
         "composite": 7.4
       },
       "migrationRisk": "medium",
-      "estimatedEffort": 16,
+      "affectedFiles": 16,
       "adapterStrategy": {
         "wrapperInterface": "AnalyticsProvider",
         "legacyCode": "src/lib/analytics.ts",
@@ -147,7 +147,7 @@
         "composite": 7.9
       },
       "migrationRisk": "medium",
-      "estimatedEffort": 20,
+      "affectedFiles": 20,
       "adapterStrategy": {
         "wrapperInterface": "FormWrapper",
         "legacyCode": "src/components/ui/FormField.tsx",

@@ -2,10 +2,10 @@
 
 ## Recommended Third-Party Library Replacements
 
-| # | Current Implementation | Recommended Library | Domain | Composite Score | Migration Risk | Effort (hrs) | Verification |
+| # | Current Implementation | Recommended Library | Domain | Composite Score | Migration Risk | Files | Verification |
 |---|----------------------|--------------------:|--------|:--------------:|:--------------:|:------------:|:------------:|
 {{#each recommendedChanges}}
-| {{@index}} | `{{currentImplementation.filePath}}` (L{{currentImplementation.lineRange.start}}–{{currentImplementation.lineRange.end}}) — {{currentImplementation.patternCategory}} | **{{recommendedLibrary.name}}** v{{recommendedLibrary.version}} ({{recommendedLibrary.license}}) | {{domain}} | {{impactScores.composite}} | {{migrationRisk}} | {{estimatedEffort}} | {{verificationStatus}} |
+| {{@index}} | `{{currentImplementation.filePath}}` (L{{currentImplementation.lineRange.start}}–{{currentImplementation.lineRange.end}}) — {{currentImplementation.patternCategory}} | **{{recommendedLibrary.name}}** v{{recommendedLibrary.version}} ({{recommendedLibrary.license}}) | {{domain}} | {{impactScores.composite}} | {{migrationRisk}} | {{affectedFiles}} | {{verificationStatus}} |
 {{/each}}
 
 ## Impact Score Breakdown

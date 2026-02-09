@@ -117,7 +117,7 @@ afterEach(() => {
 
 describe('VERSION export', () => {
   it('still exports VERSION alongside the orchestrator', () => {
-    expect(VERSION).toBe('1.0.8');
+    expect(VERSION).toBe('2.1.0');
   });
 });
 

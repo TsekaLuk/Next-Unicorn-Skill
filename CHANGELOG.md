@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-02-09
+
+### Breaking Changes
+
+- **`estimatedEffort` → `affectedFiles`** — replaced "developer-hours" estimation with concrete file count across all schemas, templates, and examples. AI programming has no concept of "effort hours". The field type changed from `number` (positive float) to `number` (non-negative integer).
+- **`estimatedTotalEffort` → `totalAffectedFiles`** — same change in `UpdatePlan.summary`.
+
+### Added
+
+- **`src/analyzer/types.ts`** — shared type definitions extracted to break circular dependencies (scanner ↔ structure-analyzer ↔ code-organization-analyzer). Zero circular deps confirmed via `madge --circular`.
+- **`src/orchestrator.ts`** — analysis pipeline extracted from index.ts. Entry point reduced from 517 lines to 65 lines (pure re-exports).
+- **CI circular dependency check** — `npx madge --circular` added to CI pipeline (zero new devDependencies).
+- **Language constraint** — SKILL.md output language now matches user's input language.
+
+### Changed
+
+- `index.ts` is now a pure re-export surface — all orchestration logic lives in `orchestrator.ts`
+- All templates updated: "Effort (hrs)" columns → "Files" columns
+- All example outputs updated to use `affectedFiles` field name
+- `RecommendedChange.affectedFiles` is now `z.number().int().nonnegative()` (was `z.number().positive()`)
+- `UpdateItem.affectedFiles` same type change
+
 ## [1.0.8] - 2026-02-09
 
 ### Added

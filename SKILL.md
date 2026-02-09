@@ -26,6 +26,7 @@ Scanner (deterministic)          →  AI Agent (generative)           →  Pipel
 - No hardcoded library recommendations — evaluate project context dynamically
 - Two analysis modes: **replacement** (hand-rolled code found) and **gap** (capability missing entirely)
 - **Human-in-the-loop**: 4 gates at irreversible, preference-driven, or costly decision points
+- **Language**: all output (gates, tables, recommendations, rationale) MUST match the user's input language. If user writes in Chinese, respond in Chinese. If English, respond in English. Never mix.
 
 ## Gate Protocol
 
@@ -138,7 +139,7 @@ Read `src/index.ts` for the `LibraryRecommendation` interface. Return `null` to 
 
 **Why**: Each recommendation has real migration cost. User may have business, timeline, or architectural reasons to defer or reject.
 
-Present ALL recommendations (replacements + gaps + code org tooling) as a decision table with columns: #, Domain, Replace what, With what, Risk, Effort, Context7, Decision. Offer options: (A) accept all, (B) accept specific, (C) low-risk only, (D) defer all. See `references/code-organization-workflow.md#gate-3-recommendation-table-example` for format.
+Present ALL recommendations (replacements + gaps + code org tooling) as a decision table with columns: #, Domain, Replace what, With what, Risk, Files (affected count), Context7, Decision. Offer options: (A) accept all, (B) accept specific, (C) low-risk only, (D) defer all. See `references/code-organization-workflow.md#gate-3-recommendation-table-example` for format.
 
 Wait for user response. Rejected items are excluded from migration plan, scoring, and PRs.
 

@@ -55,7 +55,7 @@ function makeRec(name: string, version: string): RecommendedChange {
       ui_aesthetics: 5, composite: 5,
     },
     migrationRisk: 'low',
-    estimatedEffort: 2,
+    affectedFiles: 2,
     verificationStatus: 'verified',
   };
 }

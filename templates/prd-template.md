@@ -41,10 +41,10 @@ Replace identified hand-rolled implementations with verified third-party librari
 
 ## Recommendations Summary
 
-| # | Current Code | Recommended Library | Impact | Risk | Effort |
+| # | Current Code | Recommended Library | Impact | Risk | Files |
 |---|-------------|--------------------:|:------:|:----:|:------:|
 {{#each recommendedChanges}}
-| {{@index}} | `{{currentImplementation.filePath}}` | **{{recommendedLibrary.name}}** v{{recommendedLibrary.version}} | {{impactScores.composite}}/10 | {{migrationRisk}} | {{estimatedEffort}}h |
+| {{@index}} | `{{currentImplementation.filePath}}` | **{{recommendedLibrary.name}}** v{{recommendedLibrary.version}} | {{impactScores.composite}}/10 | {{migrationRisk}} | {{affectedFiles}} |
 {{/each}}
 
 ## Impact Analysis
@@ -71,7 +71,7 @@ Replace identified hand-rolled implementations with verified third-party librari
 
 - **Steps**: {{steps.length}}
 - **Risk level**: {{riskLevel}}
-- **Estimated total effort**: {{totalEffort}} developer-hours
+- **Total files affected**: {{totalAffectedFiles}}
 
 {{/each}}
 

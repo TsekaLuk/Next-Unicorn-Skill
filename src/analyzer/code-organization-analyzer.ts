@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { StructuralFinding } from './structure-analyzer.js';
+import type { StructuralFinding, CodeOrganizationStats } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Public interfaces
@@ -8,13 +8,7 @@ import type { StructuralFinding } from './structure-analyzer.js';
 
 export interface CodeOrganizationAnalysis {
   findings: StructuralFinding[];
-  stats: {
-    totalSourceFiles: number;
-    maxDirectoryDepth: number;
-    /** Naming convention distribution: kebab → count, camelCase → count, etc. */
-    namingConventions: Record<string, number>;
-    circularDependencyCount: number;
-  };
+  stats: CodeOrganizationStats;
 }
 
 // ---------------------------------------------------------------------------

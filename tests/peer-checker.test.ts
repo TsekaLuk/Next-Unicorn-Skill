@@ -39,7 +39,7 @@ function makeRecommendation(
       composite: 7.2,
     },
     migrationRisk: 'low',
-    estimatedEffort: 4,
+    affectedFiles: 4,
     verificationStatus: 'verified',
     ...overrides,
   };

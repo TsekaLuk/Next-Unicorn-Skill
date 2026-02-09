@@ -31,7 +31,7 @@ function makeUpdateItem(
       maintainability: 5, feature_richness: 5, ux: 5,
       ui_aesthetics: 5, composite: 5,
     },
-    estimatedEffort: 1,
+    affectedFiles: 1,
     hasBreakingChanges: false,
     vulnFixCount: urgency === 'critical' ? 1 : 0,
     groupKey,
@@ -54,7 +54,7 @@ function makeBaseOutput(updates: UpdateItem[] = [], groups: UpdateGroup[] = []):
         urgent: updates.filter((u) => u.urgency === 'urgent').length,
         recommended: updates.filter((u) => u.urgency === 'recommended').length,
         routine: updates.filter((u) => u.urgency === 'routine').length,
-        estimatedTotalEffort: updates.reduce((s, u) => s + u.estimatedEffort, 0),
+        totalAffectedFiles: updates.reduce((s, u) => s + u.affectedFiles, 0),
       },
     },
   };

@@ -25,7 +25,7 @@
         "composite": 7.3
       },
       "migrationRisk": "high",
-      "estimatedEffort": 24,
+      "affectedFiles": 24,
       "adapterStrategy": {
         "wrapperInterface": "AuthMiddleware",
         "legacyCode": "src/middleware/auth.ts",
@@ -60,7 +60,7 @@
         "composite": 7.1
       },
       "migrationRisk": "low",
-      "estimatedEffort": 6,
+      "affectedFiles": 6,
       "verificationStatus": "verified",
       "verificationNote": "Context7 confirmed pino supports structured JSON logging, log levels, redaction, child loggers, and pino-pretty transport"
     },
@@ -89,7 +89,7 @@
         "composite": 7.4
       },
       "migrationRisk": "low",
-      "estimatedEffort": 8,
+      "affectedFiles": 8,
       "verificationStatus": "verified",
       "verificationNote": "Context7 confirmed zod supports schema inference, transform pipelines, and Express middleware integration"
     },
@@ -118,7 +118,7 @@
         "composite": 7.1
       },
       "migrationRisk": "low",
-      "estimatedEffort": 4,
+      "affectedFiles": 4,
       "verificationStatus": "verified",
       "verificationNote": "Context7 confirmed express-rate-limit supports Redis store, sliding window, and per-route configuration"
     },
@@ -147,7 +147,7 @@
         "composite": 6.9
       },
       "migrationRisk": "medium",
-      "estimatedEffort": 16,
+      "affectedFiles": 16,
       "adapterStrategy": {
         "wrapperInterface": "TracingProvider",
         "legacyCode": "src/utils/tracing.ts",
@@ -182,7 +182,7 @@
         "composite": 6.9
       },
       "migrationRisk": "low",
-      "estimatedEffort": 6,
+      "affectedFiles": 6,
       "verificationStatus": "verified",
       "verificationNote": "Context7 confirmed @sentry/node supports Express integration, source maps, breadcrumbs, and performance monitoring"
     }

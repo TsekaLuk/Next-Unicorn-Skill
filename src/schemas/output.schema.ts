@@ -61,7 +61,7 @@ export const RecommendedChange = z.object({
   domain: z.string(),
   impactScores: ImpactScores,
   migrationRisk: MigrationRisk,
-  estimatedEffort: z.number().positive(), // developer-hours
+  affectedFiles: z.number().int().nonnegative(), // count of files that need changes
   adapterStrategy: AdapterStrategy.optional(),
   verificationStatus: VerificationStatus,
   verificationNote: z.string().optional(),
@@ -184,7 +184,7 @@ export const UpdateItemSchema = z.object({
   urgency: UpdateUrgency,
   breakingRisk: BreakingRisk,
   impactScores: ImpactScores,
-  estimatedEffort: z.number().positive(),
+  affectedFiles: z.number().int().nonnegative(),
   hasBreakingChanges: z.boolean(),
   breakingChangeSummary: z.string().optional(),
   vulnFixCount: z.number().int().nonnegative(),
@@ -210,7 +210,7 @@ export const UpdatePlanSchema = z.object({
     urgent: z.number().int().nonnegative(),
     recommended: z.number().int().nonnegative(),
     routine: z.number().int().nonnegative(),
-    estimatedTotalEffort: z.number().nonnegative(),
+    totalAffectedFiles: z.number().int().nonnegative(),
   }),
 });
 
