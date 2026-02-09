@@ -32,6 +32,20 @@ hand-rolled code               using knowledge + Context7       filter, serializ
 
 **Key principle**: The pattern catalog contains NO hardcoded library recommendations. Library choices depend on project framework, runtime, existing dependencies, and current ecosystem state — all of which the AI agent evaluates dynamically.
 
+## Recommendation Quality Standard
+
+Do NOT recommend "any library that does this." Recommend the specific library that the best engineering teams ship with, configured the way they configure it. Evaluate every recommendation against these 5 criteria:
+
+1. **Solution, not library** — Recommend the composable stack, not a single package. Example: "Lingui + @lingui/macro (compile-time extraction) + Crowdin TMS (professional translation workflow)" — not just "an i18n library."
+2. **Architectural fit** — Match the project's runtime and framework constraints. Edge runtime → jose, not jsonwebtoken. Next.js App Router → next-intl, not react-i18next. Serverless → @upstash/ratelimit, not rate-limiter-flexible. Always explain WHY.
+3. **Product-grade DX** — Prefer tools that Silicon Valley unicorns actually ship: Supabase over raw pg, Clerk over passport, shadcn/ui + Radix over hand-rolled components, Resend over nodemailer, Linear over Jira-style tools. The bar is "would a YC-backed startup use this in production?"
+4. **Ecosystem integration** — Show how the recommendation connects to the broader stack. "react-hook-form + @hookform/resolvers + zod → shared validation schemas between client and server." "Sentry + source maps upload in CI → readable production stack traces."
+5. **Anti-patterns** — State what NOT to do and why. "Never call LLM APIs with raw fetch — you lose streaming, retry, and structured output." "Never use jsonwebtoken — no edge runtime support." "Never hardcode tax rates — they change per jurisdiction."
+
+For each recommendation, provide: the primary library, version, license, AND a brief rationale covering criteria 1–5 above as applicable. For detections with multiple valid approaches, name the primary choice and note alternatives with their "when to prefer" conditions.
+
+See [references/unicorn-catalog.md](references/unicorn-catalog.md) for the reference catalog of unicorn-grade products by category.
+
 ## Standard Operating Procedure
 
 ### Step 1: Validate Input
@@ -55,13 +69,8 @@ Detections contain **no library suggestions** — only what was detected and whe
 
 ### Step 3: Recommend Libraries (AI Agent)
 
-For each detection, recommend the best library based on:
+For each detection, apply the [Recommendation Quality Standard](#recommendation-quality-standard) and return a `LibraryRecommendation`:
 
-1. **Project context** — framework (Next.js → next-intl, Vite → @lingui/core), runtime (Edge → jose, not jsonwebtoken), existing deps
-2. **Ecosystem knowledge** — use your training knowledge of current best practices
-3. **Context7 verification** — call `resolve-library-id` + `query-docs` to confirm the library exists and get latest version/docs
-
-Return a `LibraryRecommendation` per detection:
 ```typescript
 { library: string; version: string; license: string }
 ```
@@ -76,15 +85,15 @@ Return `null` to skip a detection (intentional custom code, false positive, etc.
 
 ### Step 4: Score Impact
 
-Compute 7-dimension impact scores (scalability, performance, security, maintainability, feature richness, UX, UI aesthetics) with composite score, migration risk, and estimated effort.
+Compute 7-dimension impact scores (scalability, performance, security, maintainability, feature richness, UX, UI aesthetics) with composite score, migration risk, and estimated effort. Provide `dimensionHints` and `baseEffortHours` when you can assess code complexity.
 
 ### Step 5: Build Migration Plan
 
-Group recommendations into phases by risk (low → medium → high), ordered by domain priority (infrastructure first, presentation last). High-risk items include adapter strategies.
+Group recommendations into phases by risk (low → medium → high). High-risk items include adapter strategies.
 
 ### Step 6: Audit UX Completeness
 
-Evaluate frontend codebase across 8 UX categories: accessibility, error/empty/loading states, form validation, performance feel, copy consistency, design system alignment.
+Evaluate frontend codebase across 8 UX categories: accessibility, error/empty/loading states, form validation, performance feel, copy consistency, design system alignment. Fill in `recommendedLibrary` for partial/missing categories.
 
 ### Step 7: Apply Constraints and Serialize
 
