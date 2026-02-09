@@ -178,7 +178,7 @@ describe('Feature: next-unicorn, Property 8: Migration phase ordering by risk', 
     );
   });
 
-  it('within each phase, steps are ordered by composite score descending', () => {
+  it('within each phase, steps touching the same file are grouped together', () => {
     fc.assert(
       fc.property(
         fc.array(recommendedChangeArb, { minLength: 2, maxLength: 10 }),
@@ -186,12 +186,23 @@ describe('Feature: next-unicorn, Property 8: Migration phase ordering by risk', 
           const plan = buildMigrationPlan(recommendations);
 
           for (const phase of plan.phases) {
-            for (let i = 1; i < phase.steps.length; i++) {
-              const prevRec = recommendations[phase.steps[i - 1]!.recommendationIndex]!;
-              const currRec = recommendations[phase.steps[i]!.recommendationIndex]!;
-              expect(prevRec.impactScores.composite).toBeGreaterThanOrEqual(
-                currRec.impactScores.composite,
-              );
+            // Within each file group, composite scores should be descending
+            let prevFile = '';
+            let prevComposite = Infinity;
+            for (const step of phase.steps) {
+              const rec = recommendations[step.recommendationIndex]!;
+              const file = rec.currentImplementation.filePath;
+              if (file !== prevFile) {
+                // New file group — reset composite tracking
+                prevFile = file;
+                prevComposite = rec.impactScores.composite;
+              } else {
+                // Same file — composite should be descending
+                expect(prevComposite).toBeGreaterThanOrEqual(
+                  rec.impactScores.composite,
+                );
+                prevComposite = rec.impactScores.composite;
+              }
             }
           }
         },

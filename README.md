@@ -11,7 +11,7 @@
   <a href="https://www.npmjs.com/package/@nebutra/next-unicorn-skill"><img src="https://img.shields.io/npm/v/@nebutra/next-unicorn-skill.svg?color=blue" alt="npm version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-blue.svg" alt="TypeScript" /></a>
-  <a href="./tests/"><img src="https://img.shields.io/badge/tests-191%20passed-brightgreen.svg" alt="Tests" /></a>
+  <a href="./tests/"><img src="https://img.shields.io/badge/tests-198%20passed-brightgreen.svg" alt="Tests" /></a>
   <a href="./tests/"><img src="https://img.shields.io/badge/properties-29%20verified-purple.svg" alt="Property Tests" /></a>
 </p>
 
@@ -60,7 +60,19 @@ npm install @nebutra/next-unicorn-skill
 ```
 
 ```typescript
-import { analyze } from '@nebutra/next-unicorn-skill';
+import { analyze, scanCodebase } from '@nebutra/next-unicorn-skill';
+import type { Recommender } from '@nebutra/next-unicorn-skill';
+
+// The recommender function: AI agent decides which library fits each detection
+const recommender: Recommender = (detection) => {
+  // AI agent uses its knowledge + project context to recommend
+  // Return null to skip a detection (false positive, intentional custom code)
+  return {
+    library: 'zustand',       // dynamically chosen, not hardcoded
+    version: '^5.0.0',        // verified via Context7
+    license: 'MIT',
+  };
+};
 
 const result = await analyze({
   input: {
@@ -77,6 +89,7 @@ const result = await analyze({
     priorityFocusAreas: ['i18n', 'observability', 'auth-security'],
   },
   context7Client: myContext7Client,
+  recommender,  // AI agent provides library recommendations
   // Optional Phase 2 clients:
   vulnClient: myOsvClient,          // vulnerability scanning
   registryClient: myRegistryClient,  // auto-update
@@ -86,6 +99,7 @@ const result = await analyze({
 
 if (result.success) {
   console.log(result.prettyJson);
+  // result.scanResult contains raw detections for further AI analysis
 }
 ```
 
@@ -117,11 +131,13 @@ Or use as an **MCP SKILL** — provide [`SKILL.md`](./SKILL.md) to your AI agent
 ## How It Works
 
 ```
-Input ─> Validator ─> Scanner ─> Context7 Verifier ─> Impact Scorer
-  ─> Conflict Detection ─> Vuln Scanner ─> License Filter
+Input ─> Validator ─> Scanner ─> Recommender (AI Agent) ─> Context7 Verifier
+  ─> Impact Scorer ─> Conflict Detection ─> Vuln Scanner ─> License Filter
   ─> Migration Planner ─> UX Auditor ─> Auto-Updater
   ─> Serializer ─> PR Creator ─> Output
 ```
+
+**Key architecture**: The scanner detects WHAT is hand-rolled; the **Recommender** (AI agent or caller) decides WHAT library to use. No library recommendations are hardcoded — they are provided dynamically based on project context, ecosystem knowledge, and Context7 verification.
 
 Each stage is a pure function with structured I/O. All external dependencies (Context7, OSV, npm registry, GitHub API) are **injected via interfaces** for testability.
 
@@ -222,10 +238,15 @@ const logger = pino({
 |--------|------|:--------:|-------------|
 | `input` | `InputSchema` | Yes | Project metadata, goals, constraints, focus areas |
 | `context7Client` | `Context7Client` | Yes | Context7 MCP client for doc verification |
+| `recommender` | `Recommender` | Yes | Maps each detection → library recommendation (AI agent provides this) |
 | `vulnClient` | `VulnerabilityClient` | No | OSV client for vulnerability scanning |
 | `registryClient` | `RegistryClient` | No | Package registry client for auto-update |
 | `platformClient` | `PlatformClient` | No | GitHub/GitLab client for PR creation |
 | `gitOps` | `GitOperations` | No | Git CLI operations for PR creation |
+
+### `scanCodebase(input): Promise<ScanResult>`
+
+Standalone scanner — returns detections and workspace info without recommendations. AI agents can call this first, then provide recommendations via the `Recommender` callback.
 
 ### Output Structure
 
@@ -268,7 +289,7 @@ const logger = pino({
 ## Testing
 
 ```bash
-pnpm test          # 191 tests (vitest + fast-check)
+pnpm test          # 198 tests (vitest + fast-check)
 pnpm typecheck     # TypeScript strict mode
 pnpm build         # Compile to dist/
 ```

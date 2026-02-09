@@ -3,6 +3,12 @@ import type { VibeCodingDomain } from '../schemas/input.schema.js';
 /**
  * Defines a pattern that identifies hand-rolled code which could be
  * replaced by a battle-tested third-party library.
+ *
+ * NOTE: This interface intentionally contains NO library recommendation data.
+ * Library recommendations are the AI agent's responsibility — the agent uses
+ * its own knowledge + Context7 MCP to determine the best library for each
+ * detection at runtime, considering the project's framework, existing deps,
+ * and architectural context.
  */
 export interface PatternDefinition {
   /** Unique identifier for this pattern (e.g., "i18n-manual-pluralization") */
@@ -15,19 +21,16 @@ export interface PatternDefinition {
   filePatterns: string[];
   /** Regex patterns to match hand-rolled code */
   codePatterns: RegExp[];
-  /** The library recommended to replace the hand-rolled code */
-  suggestedLibrary: string;
-  /** Recommended version of the suggested library */
-  suggestedVersion: string;
-  /** SPDX license identifier of the suggested library */
-  license: string;
   /** Base confidence score for this pattern (0–1) */
   confidenceBase: number;
 }
 
 /**
- * Returns the full pattern catalog covering all Vibe Coding domains.
- * Each domain has at least 1–2 patterns.
+ * Returns the full pattern catalog covering Vibe Coding domains.
+ * Each covered domain has 2–3 patterns for hand-rolled code detection.
+ *
+ * The catalog defines WHAT to detect, not WHAT to recommend.
+ * Library recommendations are generated dynamically by the AI agent.
  */
 export function getPatternCatalog(): PatternDefinition[] {
   return [
@@ -43,9 +46,6 @@ export function getPatternCatalog(): PatternDefinition[] {
         /count\s*[=!]==?\s*1\s*\?\s*['"`].*['"`]\s*:\s*['"`].*['"`]/,
         /\.length\s*[=!]==?\s*1\s*\?\s*['"`].*['"`]\s*:\s*['"`].*['"`]/,
       ],
-      suggestedLibrary: 'i18next',
-      suggestedVersion: '^23.0.0',
-      license: 'MIT',
       confidenceBase: 0.7,
     },
     {
@@ -58,9 +58,6 @@ export function getPatternCatalog(): PatternDefinition[] {
         /accept-language/i,
         /toLocaleDateString\s*\(/,
       ],
-      suggestedLibrary: 'react-i18next',
-      suggestedVersion: '^14.0.0',
-      license: 'MIT',
       confidenceBase: 0.65,
     },
 
@@ -77,9 +74,6 @@ export function getPatternCatalog(): PatternDefinition[] {
         /document\s*\.\s*head\s*\.\s*appendChild/,
         /document\s*\.\s*querySelector\s*\(\s*['"`]meta\[/,
       ],
-      suggestedLibrary: 'next-seo',
-      suggestedVersion: '^6.0.0',
-      license: 'MIT',
       confidenceBase: 0.75,
     },
     {
@@ -92,14 +86,11 @@ export function getPatternCatalog(): PatternDefinition[] {
         /<urlset\s+xmlns/,
         /writeFileSync\s*\(.*sitemap/i,
       ],
-      suggestedLibrary: 'next-sitemap',
-      suggestedVersion: '^4.0.0',
-      license: 'MIT',
       confidenceBase: 0.8,
     },
 
     // -----------------------------------------------------------------------
-    // growth-hacking — A/B Testing, Analytics, Feature Flags, Funnel Tracking
+    // growth-hacking — A/B Testing, Analytics, Feature Flags
     // -----------------------------------------------------------------------
     {
       id: 'growth-manual-ab-test',
@@ -111,9 +102,6 @@ export function getPatternCatalog(): PatternDefinition[] {
         /variant\s*=\s*['"`][AB]['"`]/i,
         /experiment\s*[=:]\s*.*random/i,
       ],
-      suggestedLibrary: 'posthog-js',
-      suggestedVersion: '^1.100.0',
-      license: 'MIT',
       confidenceBase: 0.7,
     },
     {
@@ -126,9 +114,6 @@ export function getPatternCatalog(): PatternDefinition[] {
         /featureFlags?\s*\[/,
         /isFeatureEnabled\s*\(/,
       ],
-      suggestedLibrary: 'unleash-client',
-      suggestedVersion: '^5.0.0',
-      license: 'Apache-2.0',
       confidenceBase: 0.6,
     },
 
@@ -145,9 +130,6 @@ export function getPatternCatalog(): PatternDefinition[] {
         /f['"].*\{.*\}.*['"].*(?:prompt|model|completion)/i,
         /\.replace\s*\(\s*['"`]\{.*\}['"`]/,
       ],
-      suggestedLibrary: 'langchain',
-      suggestedVersion: '^0.2.0',
-      license: 'MIT',
       confidenceBase: 0.65,
     },
     {
@@ -160,14 +142,11 @@ export function getPatternCatalog(): PatternDefinition[] {
         /axios\s*\.\s*post\s*\(\s*['"`].*(?:completions|chat|generate)/i,
         /requests\s*\.\s*post\s*\(\s*['"`].*(?:v1\/|api\/)/i,
       ],
-      suggestedLibrary: 'ai',
-      suggestedVersion: '^3.0.0',
-      license: 'Apache-2.0',
       confidenceBase: 0.7,
     },
 
     // -----------------------------------------------------------------------
-    // agent-architecture — MCP Integration, Tool Orchestration, Context, Memory
+    // agent-architecture — MCP Integration, Tool Orchestration, Context
     // -----------------------------------------------------------------------
     {
       id: 'agent-manual-tool-dispatch',
@@ -179,9 +158,6 @@ export function getPatternCatalog(): PatternDefinition[] {
         /if\s*\(\s*tool(?:Name|_name)\s*===?\s*['"`]/i,
         /tool_map\s*\[/i,
       ],
-      suggestedLibrary: '@modelcontextprotocol/sdk',
-      suggestedVersion: '^1.0.0',
-      license: 'MIT',
       confidenceBase: 0.7,
     },
     {
@@ -194,9 +170,6 @@ export function getPatternCatalog(): PatternDefinition[] {
         /truncat(?:e|ion)\s*.*(?:context|message|prompt)/i,
         /maxTokens?\s*[=:]/i,
       ],
-      suggestedLibrary: 'tiktoken',
-      suggestedVersion: '^1.0.0',
-      license: 'MIT',
       confidenceBase: 0.6,
     },
 
@@ -213,9 +186,6 @@ export function getPatternCatalog(): PatternDefinition[] {
         /\.replace\s*\(\s*\/\s*\\\*\\\*/,
         /\.split\s*\(\s*['"`]\\n['"`]\s*\)\s*\.\s*map/,
       ],
-      suggestedLibrary: 'contentlayer',
-      suggestedVersion: '^0.3.0',
-      license: 'MIT',
       confidenceBase: 0.65,
     },
     {
@@ -228,9 +198,6 @@ export function getPatternCatalog(): PatternDefinition[] {
         /glob\s*\(.*\.mdx?\b/i,
         /frontmatter|gray-matter/i,
       ],
-      suggestedLibrary: 'next-mdx-remote',
-      suggestedVersion: '^4.0.0',
-      license: 'MIT',
       confidenceBase: 0.6,
     },
 
@@ -247,9 +214,6 @@ export function getPatternCatalog(): PatternDefinition[] {
         /payment[_-]?intent/i,
         /charge\s*\.\s*create/i,
       ],
-      suggestedLibrary: 'stripe',
-      suggestedVersion: '^14.0.0',
-      license: 'MIT',
       confidenceBase: 0.75,
     },
     {
@@ -262,14 +226,11 @@ export function getPatternCatalog(): PatternDefinition[] {
         /vat\s*[=:*]/i,
         /calculateTax\s*\(/i,
       ],
-      suggestedLibrary: 'taxjar',
-      suggestedVersion: '^5.0.0',
-      license: 'MIT',
       confidenceBase: 0.65,
     },
 
     // -----------------------------------------------------------------------
-    // observability — Logging, Tracing, Metrics, Error Tracking, CI/CD
+    // observability — Logging, Tracing, Metrics, Error Tracking
     // -----------------------------------------------------------------------
     {
       id: 'observability-manual-logging',
@@ -279,9 +240,6 @@ export function getPatternCatalog(): PatternDefinition[] {
       codePatterns: [
         /console\s*\.\s*(?:log|error|warn|info)\s*\(/,
       ],
-      suggestedLibrary: 'pino',
-      suggestedVersion: '^9.0.0',
-      license: 'MIT',
       confidenceBase: 0.55,
     },
     {
@@ -294,14 +252,11 @@ export function getPatternCatalog(): PatternDefinition[] {
         /window\s*\.\s*onerror/,
         /process\s*\.\s*on\s*\(\s*['"`]uncaughtException['"`]/,
       ],
-      suggestedLibrary: 'sentry',
-      suggestedVersion: '^8.0.0',
-      license: 'MIT',
       confidenceBase: 0.7,
     },
 
     // -----------------------------------------------------------------------
-    // auth-security — Authentication, Authorization/RBAC, Secrets, Rate Limiting
+    // auth-security — Authentication, Authorization, Rate Limiting
     // -----------------------------------------------------------------------
     {
       id: 'auth-manual-jwt-handling',
@@ -314,9 +269,6 @@ export function getPatternCatalog(): PatternDefinition[] {
         /jwt\s*\.\s*sign\s*\(/i,
         /createHmac\s*\(/,
       ],
-      suggestedLibrary: 'jose',
-      suggestedVersion: '^5.0.0',
-      license: 'MIT',
       confidenceBase: 0.75,
     },
     {
@@ -329,14 +281,11 @@ export function getPatternCatalog(): PatternDefinition[] {
         /rateLimi(?:t|ter)/i,
         /new\s+Map\s*\(\s*\).*(?:timestamp|count|window)/i,
       ],
-      suggestedLibrary: 'rate-limiter-flexible',
-      suggestedVersion: '^5.0.0',
-      license: 'ISC',
       confidenceBase: 0.65,
     },
 
     // -----------------------------------------------------------------------
-    // ux-completeness — Accessibility, Error/Empty/Loading States, etc.
+    // ux-completeness — Forms, Loading States
     // -----------------------------------------------------------------------
     {
       id: 'ux-manual-form-validation',
@@ -348,9 +297,6 @@ export function getPatternCatalog(): PatternDefinition[] {
         /errors\s*\[\s*['"`]\w+['"`]\s*\]/,
         /validate\w*\s*=\s*\(\s*\)\s*=>/,
       ],
-      suggestedLibrary: 'react-hook-form',
-      suggestedVersion: '^7.50.0',
-      license: 'MIT',
       confidenceBase: 0.7,
     },
     {
@@ -362,10 +308,279 @@ export function getPatternCatalog(): PatternDefinition[] {
         /isLoading\s*\?\s*.*(?:Loading|Spinner|\.\.\.)/i,
         /useState\s*<\s*boolean\s*>\s*\(\s*(?:true|false)\s*\).*loading/i,
       ],
-      suggestedLibrary: 'react-loading-skeleton',
-      suggestedVersion: '^3.4.0',
-      license: 'MIT',
       confidenceBase: 0.55,
+    },
+
+    // -----------------------------------------------------------------------
+    // state-management — Manual state chains, Redux boilerplate
+    // -----------------------------------------------------------------------
+    {
+      id: 'state-manual-usestate-chain',
+      domain: 'state-management',
+      description: 'Multiple related useState hooks that should be a single store',
+      filePatterns: ['**/*.tsx', '**/*.jsx'],
+      codePatterns: [
+        /useState\s*\(.*\);\s*\n\s*const\s*\[.*\]\s*=\s*useState\s*\(.*\);\s*\n\s*const\s*\[.*\]\s*=\s*useState/,
+        /const\s*\[\w+,\s*set\w+\]\s*=\s*useState[\s\S]{0,100}const\s*\[\w+,\s*set\w+\]\s*=\s*useState[\s\S]{0,100}const\s*\[\w+,\s*set\w+\]\s*=\s*useState/,
+      ],
+      confidenceBase: 0.6,
+    },
+    {
+      id: 'state-manual-context-provider',
+      domain: 'state-management',
+      description: 'Hand-rolled React Context for global state management',
+      filePatterns: ['**/*.tsx', '**/*.jsx', '**/*.ts', '**/*.js'],
+      codePatterns: [
+        /createContext\s*<[\s\S]*>\s*\(/,
+        /useReducer\s*\(\s*\w+Reducer/,
+        /Provider\s+value\s*=\s*\{[\s\S]*dispatch/,
+      ],
+      confidenceBase: 0.55,
+    },
+    {
+      id: 'state-manual-redux-boilerplate',
+      domain: 'state-management',
+      description: 'Redux boilerplate without Redux Toolkit (manual action creators, reducers)',
+      filePatterns: ['**/*.ts', '**/*.js'],
+      codePatterns: [
+        /type\s*:\s*['"`][A-Z_]+['"`]\s*,\s*payload/,
+        /switch\s*\(\s*action\s*\.\s*type\s*\)/,
+        /const\s+\w+\s*=\s*\(\s*state\s*=\s*initialState\s*,\s*action\s*\)/,
+      ],
+      confidenceBase: 0.75,
+    },
+
+    // -----------------------------------------------------------------------
+    // data-fetching-caching — Manual fetch + useEffect patterns
+    // -----------------------------------------------------------------------
+    {
+      id: 'data-fetch-useeffect',
+      domain: 'data-fetching-caching',
+      description: 'Manual data fetching with fetch/axios inside useEffect',
+      filePatterns: ['**/*.tsx', '**/*.jsx'],
+      codePatterns: [
+        /useEffect\s*\(\s*\(\s*\)\s*=>\s*\{[\s\S]{0,200}fetch\s*\(/,
+        /useEffect\s*\(\s*\(\s*\)\s*=>\s*\{[\s\S]{0,200}axios\s*\.\s*get/,
+        /useEffect\s*\(\s*\(\s*\)\s*=>\s*\{[\s\S]{0,100}setLoading\s*\(\s*true\s*\)/,
+      ],
+      confidenceBase: 0.7,
+    },
+    {
+      id: 'data-fetch-manual-cache',
+      domain: 'data-fetching-caching',
+      description: 'Hand-rolled client-side data cache with Map or object',
+      filePatterns: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
+      codePatterns: [
+        /new\s+Map\s*<.*,.*>\s*\(\s*\)[\s\S]{0,200}\.set\s*\([\s\S]{0,100}\.get\s*\(/,
+        /cache\s*\[\s*\w+\s*\]\s*=[\s\S]{0,100}cache\s*\[\s*\w+\s*\]/,
+        /const\s+cache\s*=\s*(?:new\s+Map|{})/,
+      ],
+      confidenceBase: 0.6,
+    },
+    {
+      id: 'data-fetch-manual-retry',
+      domain: 'data-fetching-caching',
+      description: 'Hand-rolled fetch retry logic with loops or recursion',
+      filePatterns: ['**/*.ts', '**/*.js'],
+      codePatterns: [
+        /retry\s*[<>=]\s*\d+[\s\S]{0,200}fetch\s*\(/i,
+        /for\s*\(\s*let\s+\w+\s*=\s*0[\s\S]{0,200}fetch\s*\(/,
+        /attempts?\s*[+\-]=\s*1[\s\S]{0,100}(?:fetch|axios)/i,
+      ],
+      confidenceBase: 0.7,
+    },
+
+    // -----------------------------------------------------------------------
+    // forms-ux — Manual form state and validation
+    // -----------------------------------------------------------------------
+    {
+      id: 'forms-manual-state-tracking',
+      domain: 'forms-ux',
+      description: 'Multiple useState hooks for individual form fields',
+      filePatterns: ['**/*.tsx', '**/*.jsx'],
+      codePatterns: [
+        /const\s*\[\s*\w+,\s*set\w+\s*\]\s*=\s*useState\s*\(\s*['"`]{2}\s*\)[\s\S]{0,200}onChange/,
+        /e\s*\.\s*target\s*\.\s*value[\s\S]{0,50}set\w+\s*\(\s*e\s*\.\s*target\s*\.\s*value\s*\)/,
+      ],
+      confidenceBase: 0.65,
+    },
+    {
+      id: 'forms-manual-submit-handler',
+      domain: 'forms-ux',
+      description: 'Hand-rolled form submission with manual preventDefault and state collection',
+      filePatterns: ['**/*.tsx', '**/*.jsx'],
+      codePatterns: [
+        /handleSubmit[\s\S]{0,100}preventDefault\s*\(\s*\)[\s\S]{0,200}fetch\s*\(/,
+        /onSubmit[\s\S]{0,100}e\s*\.\s*preventDefault[\s\S]{0,200}(?:setLoading|setError)/,
+      ],
+      confidenceBase: 0.6,
+    },
+
+    // -----------------------------------------------------------------------
+    // error-handling-resilience — Error boundaries, Result types
+    // -----------------------------------------------------------------------
+    {
+      id: 'error-manual-error-boundary',
+      domain: 'error-handling-resilience',
+      description: 'Hand-rolled error boundary class component',
+      filePatterns: ['**/*.tsx', '**/*.jsx', '**/*.ts', '**/*.js'],
+      codePatterns: [
+        /componentDidCatch\s*\(/,
+        /getDerivedStateFromError\s*\(/,
+        /class\s+\w*ErrorBoundary\s+extends\s+(?:React\.)?Component/,
+      ],
+      confidenceBase: 0.8,
+    },
+    {
+      id: 'error-manual-result-type',
+      domain: 'error-handling-resilience',
+      description: 'Hand-rolled Result/Either type for error handling',
+      filePatterns: ['**/*.ts', '**/*.js'],
+      codePatterns: [
+        /type\s+Result\s*<[\s\S]*>\s*=\s*\{?\s*(?:success|ok|data|error)/i,
+        /interface\s+(?:Result|Either)\s*<[\s\S]*>\s*\{/i,
+        /\{\s*ok\s*:\s*true[\s\S]{0,50}data\s*:[\s\S]{0,100}\{\s*ok\s*:\s*false[\s\S]{0,50}error\s*:/,
+      ],
+      confidenceBase: 0.65,
+    },
+
+    // -----------------------------------------------------------------------
+    // a11y-accessibility — Missing ARIA, keyboard navigation
+    // -----------------------------------------------------------------------
+    {
+      id: 'a11y-manual-click-handler-div',
+      domain: 'a11y-accessibility',
+      description: 'Clickable div/span without keyboard accessibility',
+      filePatterns: ['**/*.tsx', '**/*.jsx'],
+      codePatterns: [
+        /<div\s[^>]*onClick\s*=\s*\{/,
+        /<span\s[^>]*onClick\s*=\s*\{/,
+      ],
+      confidenceBase: 0.6,
+    },
+    {
+      id: 'a11y-manual-focus-management',
+      domain: 'a11y-accessibility',
+      description: 'Hand-rolled focus management and keyboard trap',
+      filePatterns: ['**/*.tsx', '**/*.jsx', '**/*.ts', '**/*.js'],
+      codePatterns: [
+        /\.focus\s*\(\s*\)[\s\S]{0,200}(?:tabIndex|keyCode|keyDown)/i,
+        /addEventListener\s*\(\s*['"`]keydown['"`][\s\S]{0,200}(?:Tab|Escape|27|9)\b/,
+        /document\s*\.\s*activeElement/,
+      ],
+      confidenceBase: 0.55,
+    },
+
+    // -----------------------------------------------------------------------
+    // file-upload-media — Manual FileReader, drag-and-drop
+    // -----------------------------------------------------------------------
+    {
+      id: 'upload-manual-filereader',
+      domain: 'file-upload-media',
+      description: 'Hand-rolled file reading with FileReader API',
+      filePatterns: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
+      codePatterns: [
+        /new\s+FileReader\s*\(\s*\)/,
+        /readAsDataURL\s*\(/,
+        /readAsArrayBuffer\s*\(/,
+      ],
+      confidenceBase: 0.6,
+    },
+    {
+      id: 'upload-manual-drag-drop',
+      domain: 'file-upload-media',
+      description: 'Hand-rolled drag-and-drop file upload handling',
+      filePatterns: ['**/*.tsx', '**/*.jsx', '**/*.ts', '**/*.js'],
+      codePatterns: [
+        /addEventListener\s*\(\s*['"`](?:dragover|dragenter|drop)['"`]/,
+        /onDrop\s*=\s*\{[\s\S]{0,200}dataTransfer\s*\.\s*files/,
+        /e\s*\.\s*dataTransfer\s*\.\s*files/,
+      ],
+      confidenceBase: 0.65,
+    },
+
+    // -----------------------------------------------------------------------
+    // database-orm-migrations — Raw SQL, manual migrations
+    // -----------------------------------------------------------------------
+    {
+      id: 'db-manual-raw-sql',
+      domain: 'database-orm-migrations',
+      description: 'Hand-rolled raw SQL queries with string interpolation',
+      filePatterns: ['**/*.ts', '**/*.js'],
+      codePatterns: [
+        /`SELECT\s[\s\S]*FROM\s[\s\S]*\$\{/i,
+        /`INSERT\s+INTO\s[\s\S]*\$\{/i,
+        /`UPDATE\s[\s\S]*SET\s[\s\S]*\$\{/i,
+        /query\s*\(\s*['"`](?:SELECT|INSERT|UPDATE|DELETE)\b/i,
+      ],
+      confidenceBase: 0.7,
+    },
+    {
+      id: 'db-manual-migration-script',
+      domain: 'database-orm-migrations',
+      description: 'Hand-rolled database migration with CREATE TABLE / ALTER TABLE',
+      filePatterns: ['**/*.ts', '**/*.js', '**/*.sql'],
+      codePatterns: [
+        /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?\w+/i,
+        /ALTER\s+TABLE\s+\w+\s+(?:ADD|DROP|MODIFY)/i,
+        /\.exec\s*\(\s*['"`](?:CREATE|ALTER|DROP)\s/i,
+      ],
+      confidenceBase: 0.65,
+    },
+
+    // -----------------------------------------------------------------------
+    // logging-tracing-metrics — Structured logging, OpenTelemetry
+    // -----------------------------------------------------------------------
+    {
+      id: 'metrics-manual-timing',
+      domain: 'logging-tracing-metrics',
+      description: 'Hand-rolled performance timing with Date.now() or performance.now()',
+      filePatterns: ['**/*.ts', '**/*.js', '**/*.tsx', '**/*.jsx'],
+      codePatterns: [
+        /const\s+\w*[Ss]tart\w*\s*=\s*(?:Date|performance)\s*\.\s*now\s*\(\s*\)/,
+        /(?:Date|performance)\s*\.\s*now\s*\(\s*\)\s*-\s*\w*[Ss]tart/,
+        /console\s*\.\s*time\s*\(/,
+      ],
+      confidenceBase: 0.55,
+    },
+    {
+      id: 'metrics-manual-structured-log',
+      domain: 'logging-tracing-metrics',
+      description: 'Hand-rolled structured logging with JSON.stringify',
+      filePatterns: ['**/*.ts', '**/*.js'],
+      codePatterns: [
+        /console\s*\.\s*(?:log|info)\s*\(\s*JSON\s*\.\s*stringify\s*\(/,
+        /console\s*\.\s*(?:log|info)\s*\(\s*\{[\s\S]{0,200}(?:timestamp|level|message)/i,
+      ],
+      confidenceBase: 0.7,
+    },
+
+    // -----------------------------------------------------------------------
+    // testing-strategy — Manual test utilities
+    // -----------------------------------------------------------------------
+    {
+      id: 'test-manual-assertions',
+      domain: 'testing-strategy',
+      description: 'Hand-rolled test assertions without a test framework',
+      filePatterns: ['**/*.test.ts', '**/*.test.js', '**/*.spec.ts', '**/*.spec.js'],
+      codePatterns: [
+        /if\s*\([\s\S]{0,50}!==[\s\S]{0,50}\)\s*throw\s+new\s+Error/,
+        /assert\s*\.\s*(?:equal|strictEqual|deepEqual)\s*\(/,
+        /console\s*\.\s*assert\s*\(/,
+      ],
+      confidenceBase: 0.7,
+    },
+    {
+      id: 'test-manual-mocks',
+      domain: 'testing-strategy',
+      description: 'Hand-rolled mock/stub implementations',
+      filePatterns: ['**/*.test.ts', '**/*.test.js', '**/*.spec.ts', '**/*.spec.js'],
+      codePatterns: [
+        /const\s+mock\w+\s*=\s*\(\s*\)\s*=>\s*(?:Promise\s*\.\s*resolve|{)/i,
+        /jest\s*\.\s*fn\s*\(\s*\)/,
+        /sinon\s*\.\s*stub\s*\(/,
+      ],
+      confidenceBase: 0.5,
     },
   ];
 }

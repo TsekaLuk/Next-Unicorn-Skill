@@ -13,6 +13,7 @@ export interface UxAuditItem {
   category: UxCategory;
   status: 'present' | 'partial' | 'missing';
   filePaths: string[];
+  /** Library recommendation — left undefined by the auditor; filled by AI agent */
   recommendedLibrary?: string;
   rationale: string;
 }
@@ -47,15 +48,14 @@ const ALL_UX_CATEGORIES: UxCategory[] = [
 // ---------------------------------------------------------------------------
 
 /**
- * Each category has:
- * - patterns: regex patterns to look for in detection patternCategory or domain
+ * Each category defines WHAT to detect, not WHAT to recommend.
+ * Library recommendations are the AI agent's responsibility.
+ *
+ * Detection signals:
+ * - detectionPatternIds: scanner pattern IDs that indicate this category
+ * - detectionDomains: scanner domains that relate to this category
+ * - patternKeywords: regex keywords to search in pattern category strings
  * - libraryIndicators: library names in currentLibraries that indicate coverage
- * - detectionDomains: domains from the scanner that relate to this category
- * - detectionPatternIds: specific pattern IDs from the scanner that relate
- * - recommendedLibrary: the library to recommend when missing/partial
- * - missingRationale: rationale when the category is missing
- * - partialRationale: rationale when the category is partial
- * - presentRationale: rationale when the category is present
  */
 interface CategoryConfig {
   category: UxCategory;
@@ -67,14 +67,6 @@ interface CategoryConfig {
   patternKeywords: RegExp[];
   /** Library names in currentLibraries that indicate coverage */
   libraryIndicators: string[];
-  /** The library to recommend when missing or partial */
-  recommendedLibrary: string;
-  /** Rationale when the category is missing */
-  missingRationale: string;
-  /** Rationale when the category is partial */
-  partialRationale: string;
-  /** Rationale when the category is present */
-  presentRationale: string;
 }
 
 const CATEGORY_CONFIGS: CategoryConfig[] = [
@@ -92,13 +84,6 @@ const CATEGORY_CONFIGS: CategoryConfig[] = [
       'react-focus-lock',
       '@reach/visually-hidden',
     ],
-    recommendedLibrary: 'react-aria',
-    missingRationale:
-      'No accessibility patterns detected. Add react-aria for accessible primitives with ARIA attributes, focus management, and keyboard navigation built-in.',
-    partialRationale:
-      'Some accessibility patterns found but coverage is incomplete. react-aria provides comprehensive accessible component primitives.',
-    presentRationale:
-      'Accessibility patterns detected across frontend files with proper ARIA attributes and focus management.',
   },
   {
     category: 'error-states',
@@ -112,13 +97,6 @@ const CATEGORY_CONFIGS: CategoryConfig[] = [
       'react-query',
       '@tanstack/react-query',
     ],
-    recommendedLibrary: 'react-error-boundary',
-    missingRationale:
-      'No error boundary or error state patterns detected. react-error-boundary provides declarative error boundaries with fallback UI, retry, and reset capabilities.',
-    partialRationale:
-      'Some error handling found but missing structured error boundaries. react-error-boundary adds declarative fallback UI and recovery patterns.',
-    presentRationale:
-      'Error state handling detected with error boundaries and fallback UI patterns.',
   },
   {
     category: 'empty-states',
@@ -126,13 +104,6 @@ const CATEGORY_CONFIGS: CategoryConfig[] = [
     detectionDomains: ['ux-completeness'],
     patternKeywords: [/empty.?state/i, /no.?data/i, /no.?results/i, /placeholder/i, /zero.?state/i],
     libraryIndicators: ['react-empty-state', '@illustrations/undraw'],
-    recommendedLibrary: 'react-empty-state',
-    missingRationale:
-      'No empty state patterns detected. Add dedicated empty state components with illustrations and call-to-action buttons for better user guidance.',
-    partialRationale:
-      'Some empty state handling found but not consistently applied. Consider a dedicated empty state component library for consistent UX.',
-    presentRationale:
-      'Empty state patterns detected with appropriate placeholder content and user guidance.',
   },
   {
     category: 'loading-states',
@@ -146,13 +117,6 @@ const CATEGORY_CONFIGS: CategoryConfig[] = [
       '@tanstack/react-query',
       'swr',
     ],
-    recommendedLibrary: 'react-loading-skeleton',
-    missingRationale:
-      'No loading state patterns detected. react-loading-skeleton provides animated placeholder UI that reduces perceived load time and prevents layout shift.',
-    partialRationale:
-      'Hand-rolled loading states found. react-loading-skeleton provides consistent, animated skeleton screens with automatic sizing.',
-    presentRationale:
-      'Loading state patterns detected with skeleton screens or spinner components.',
   },
   {
     category: 'form-validation',
@@ -167,13 +131,6 @@ const CATEGORY_CONFIGS: CategoryConfig[] = [
       '@hookform/resolvers',
       'vest',
     ],
-    recommendedLibrary: 'react-hook-form',
-    missingRationale:
-      'No form validation patterns detected. react-hook-form provides performant form validation with minimal re-renders, schema integration, and accessible error messages.',
-    partialRationale:
-      'Hand-rolled form validation found. react-hook-form reduces boilerplate and provides consistent validation UX with schema-based validation support.',
-    presentRationale:
-      'Form validation patterns detected with structured validation library integration.',
   },
   {
     category: 'performance-feel',
@@ -197,13 +154,6 @@ const CATEGORY_CONFIGS: CategoryConfig[] = [
       'react-intersection-observer',
       'framer-motion',
     ],
-    recommendedLibrary: '@tanstack/react-virtual',
-    missingRationale:
-      'No performance optimization patterns detected. @tanstack/react-virtual provides efficient list virtualization, reducing DOM nodes and improving scroll performance for large datasets.',
-    partialRationale:
-      'Some performance patterns found but missing virtualization or optimistic updates. @tanstack/react-virtual improves rendering performance for large lists.',
-    presentRationale:
-      'Performance optimization patterns detected including virtualization and lazy loading.',
   },
   {
     category: 'copy-consistency',
@@ -218,13 +168,6 @@ const CATEGORY_CONFIGS: CategoryConfig[] = [
       'formatjs',
       '@formatjs/intl',
     ],
-    recommendedLibrary: 'react-i18next',
-    missingRationale:
-      'No internationalization or copy management patterns detected. react-i18next provides structured copy management with pluralization, interpolation, and locale-aware formatting for consistent UI text.',
-    partialRationale:
-      'Hand-rolled i18n patterns found. react-i18next provides centralized copy management ensuring consistency across the application.',
-    presentRationale:
-      'Copy consistency patterns detected with internationalization library integration.',
   },
   {
     category: 'design-system-alignment',
@@ -254,13 +197,6 @@ const CATEGORY_CONFIGS: CategoryConfig[] = [
       '@emotion/react',
       'class-variance-authority',
     ],
-    recommendedLibrary: '@radix-ui/themes',
-    missingRationale:
-      'No design system or component library patterns detected. @radix-ui/themes provides accessible, composable UI primitives that enforce design consistency across the application.',
-    partialRationale:
-      'Some design system patterns found but coverage is incomplete. @radix-ui/themes provides a comprehensive set of accessible, themed components.',
-    presentRationale:
-      'Design system alignment detected with component library and theming patterns.',
   },
 ];
 
@@ -322,6 +258,29 @@ function evaluateCategory(
   }
 }
 
+/**
+ * Generate a factual rationale based on the detection status.
+ * Does NOT recommend specific libraries — that's the AI agent's job.
+ */
+function generateRationale(
+  category: string,
+  status: 'present' | 'partial' | 'missing',
+  filePaths: string[],
+): string {
+  const categoryLabel = category.replace(/-/g, ' ');
+
+  if (status === 'present') {
+    return `${categoryLabel} patterns detected with library integration.`;
+  }
+  if (status === 'partial') {
+    const fileList = filePaths.length > 0
+      ? ` in ${filePaths.length} file(s)`
+      : '';
+    return `Hand-rolled ${categoryLabel} patterns found${fileList}. Consider replacing with a dedicated library.`;
+  }
+  return `No ${categoryLabel} patterns detected. Manual review recommended.`;
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -331,7 +290,9 @@ function evaluateCategory(
  * and the project's current library dependencies.
  *
  * Always returns exactly 8 items — one for each UX category.
- * Items with status "partial" or "missing" include a recommendedLibrary and rationale.
+ * The auditor determines STATUS (present/partial/missing) deterministically.
+ * Library recommendations (recommendedLibrary) are NOT filled by the auditor —
+ * they are the AI agent's responsibility to fill based on project context.
  *
  * @param scanResult - The result from the codebase scanner
  * @param projectMetadata - Project metadata including current libraries
@@ -347,24 +308,13 @@ export function auditUxCompleteness(
   for (const config of CATEGORY_CONFIGS) {
     const { status, filePaths } = evaluateCategory(config, scanResult.detections, currentLibraries);
 
-    const item: UxAuditItem = {
+    items.push({
       category: config.category,
       status,
       filePaths,
-      rationale:
-        status === 'missing'
-          ? config.missingRationale
-          : status === 'partial'
-            ? config.partialRationale
-            : config.presentRationale,
-    };
-
-    // Add recommendedLibrary for partial or missing statuses (required by spec)
-    if (status === 'partial' || status === 'missing') {
-      item.recommendedLibrary = config.recommendedLibrary;
-    }
-
-    items.push(item);
+      rationale: generateRationale(config.category, status, filePaths),
+      // recommendedLibrary is intentionally left undefined — AI agent fills it
+    });
   }
 
   // Ensure all 8 categories are present (defensive — should always be true)
@@ -375,8 +325,7 @@ export function auditUxCompleteness(
         category,
         status: 'missing',
         filePaths: [],
-        recommendedLibrary: 'unknown',
-        rationale: `No patterns detected for ${category}. Manual review recommended.`,
+        rationale: `No ${category.replace(/-/g, ' ')} patterns detected. Manual review recommended.`,
       });
     }
   }

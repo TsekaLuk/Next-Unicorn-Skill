@@ -5,11 +5,38 @@ import type { VerificationResult } from '../verifier/context7.js';
 // Public interfaces
 // ---------------------------------------------------------------------------
 
+export interface ScoringConfig {
+  /** Priority domain boost multiplier (default: 1.2) */
+  priorityBoost?: number;
+  /** Maximum composite score cap (default: 10) */
+  maxComposite?: number;
+  /** Base effort hours per line (default: 0.1) */
+  baseEffortPerLine?: number;
+  /** Risk multipliers for effort: [low, medium, high] */
+  riskMultipliers?: [number, number, number];
+}
+
 export interface ScoringInput {
   detection: Detection;
   verification: VerificationResult;
   weights?: Record<string, number>; // 7 dimension weights
   priorityFocusAreas?: string[];
+  config?: ScoringConfig;
+
+  /**
+   * Optional dimension score overrides from the AI agent.
+   * Keys are dimension names (e.g., "security", "ux"), values are scores 1–10.
+   * When provided, these override the confidence-based defaults.
+   * The AI agent can provide more accurate scores based on code context.
+   */
+  dimensionHints?: Partial<Record<string, number>>;
+
+  /**
+   * Optional base effort in hours from the AI agent.
+   * When provided, overrides the default effort estimation.
+   * The AI agent can estimate more accurately based on code complexity.
+   */
+  baseEffortHours?: number;
 }
 
 export interface ScoringOutput {
@@ -45,109 +72,20 @@ type Dimension = (typeof DIMENSIONS)[number];
 
 const DEFAULT_WEIGHT = 1 / 7;
 
-/** Priority domain boost multiplier */
-const PRIORITY_BOOST = 1.2;
+/** Default priority domain boost multiplier */
+const DEFAULT_PRIORITY_BOOST = 1.2;
 
-/** Maximum composite score (cap) */
-const MAX_COMPOSITE = 10;
+/** Default maximum composite score (cap) */
+const DEFAULT_MAX_COMPOSITE = 10;
 
-// ---------------------------------------------------------------------------
-// Domain → dimension affinity mapping
-// ---------------------------------------------------------------------------
+/** Default risk multipliers: [low, medium, high] */
+const DEFAULT_RISK_MULTIPLIERS: [number, number, number] = [1.0, 1.5, 2.5];
 
-/**
- * Maps each Vibe Coding domain to the dimensions it most strongly affects.
- * Dimensions listed here get a boost based on the detection's confidence.
- */
-const DOMAIN_DIMENSION_AFFINITY: Record<string, Partial<Record<Dimension, number>>> = {
-  // A. UX / Design
-  'ux-completeness': { ux: 1.4, ui_aesthetics: 1.3, feature_richness: 1.1 },
-  'ui-aesthetics': { ui_aesthetics: 1.4, ux: 1.2, feature_richness: 1.1 },
-  'design-system': { ui_aesthetics: 1.3, maintainability: 1.3, ux: 1.1 },
-  'theming-dark-mode': { ui_aesthetics: 1.3, ux: 1.2, maintainability: 1.1 },
-  'a11y-accessibility': { ux: 1.4, feature_richness: 1.2, maintainability: 1.1 },
-  'responsive-mobile-ux': { ux: 1.3, ui_aesthetics: 1.2, performance: 1.1 },
-  'empty-loading-error-states': { ux: 1.4, ui_aesthetics: 1.2, feature_richness: 1.1 },
-  'forms-ux': { ux: 1.3, feature_richness: 1.2, maintainability: 1.1 },
-  'validation-feedback': { ux: 1.3, security: 1.2, maintainability: 1.1 },
-  'navigation-information-architecture': { ux: 1.3, feature_richness: 1.2, maintainability: 1.1 },
-  'notifications-inapp': { ux: 1.3, feature_richness: 1.2, scalability: 1.1 },
-  'tables-data-grid-ux': { ux: 1.3, performance: 1.2, feature_richness: 1.1 },
-  'filters-sort-search-ux': { ux: 1.3, performance: 1.2, feature_richness: 1.1 },
-  'onboarding-guided-tour': { ux: 1.4, ui_aesthetics: 1.2, feature_richness: 1.1 },
+/** Default base effort per line */
+const DEFAULT_BASE_EFFORT_PER_LINE = 0.1;
 
-  // B. SEO / i18n / Content
-  'seo': { performance: 1.2, feature_richness: 1.3, scalability: 1.1 },
-  'i18n': { ux: 1.3, maintainability: 1.2, feature_richness: 1.1 },
-  'localization-ux': { ux: 1.3, feature_richness: 1.2, maintainability: 1.1 },
-  'content-marketing': { ux: 1.2, maintainability: 1.2, feature_richness: 1.1 },
-  'landing-page-conversion': { ux: 1.3, ui_aesthetics: 1.2, performance: 1.1 },
-
-  // C. Growth / Data
-  'growth-hacking': { feature_richness: 1.3, ux: 1.2, scalability: 1.1 },
-  'analytics-tracking': { feature_richness: 1.3, scalability: 1.2, security: 1.1 },
-  'attribution-measurement': { feature_richness: 1.3, scalability: 1.2, security: 1.1 },
-  'ab-testing-experimentation': { feature_richness: 1.3, scalability: 1.2, maintainability: 1.1 },
-  'product-led-growth': { ux: 1.3, feature_richness: 1.2, scalability: 1.1 },
-  'retention-lifecycle-crm': { feature_richness: 1.3, scalability: 1.2, ux: 1.1 },
-  'referrals-virality': { feature_richness: 1.3, scalability: 1.2, ux: 1.1 },
-
-  // D. App / Frontend Architecture
-  'agent-architecture': { maintainability: 1.3, scalability: 1.2, feature_richness: 1.1 },
-  'frontend-architecture': { maintainability: 1.3, performance: 1.2, scalability: 1.1 },
-  'state-management': { maintainability: 1.3, performance: 1.2, scalability: 1.1 },
-  'data-fetching-caching': { performance: 1.3, scalability: 1.2, maintainability: 1.1 },
-  'error-handling-resilience': { maintainability: 1.3, security: 1.2, ux: 1.1 },
-  'realtime-collaboration': { scalability: 1.3, performance: 1.2, feature_richness: 1.1 },
-  'file-upload-media': { feature_richness: 1.3, ux: 1.2, security: 1.1 },
-  'search-discovery': { performance: 1.3, feature_richness: 1.2, ux: 1.1 },
-
-  // E. Backend / Platform
-  'api-design-contracts': { maintainability: 1.3, scalability: 1.2, security: 1.1 },
-  'backend-architecture': { maintainability: 1.3, scalability: 1.2, performance: 1.1 },
-  'database-orm-migrations': { maintainability: 1.3, scalability: 1.2, security: 1.1 },
-  'caching-rate-limit': { performance: 1.3, scalability: 1.2, security: 1.1 },
-  'jobs-queue-scheduler': { scalability: 1.3, maintainability: 1.2, performance: 1.1 },
-  'webhooks-integrations': { scalability: 1.3, maintainability: 1.2, feature_richness: 1.1 },
-  'feature-flags-config': { maintainability: 1.3, feature_richness: 1.2, scalability: 1.1 },
-  'multi-tenancy-saas': { scalability: 1.3, security: 1.2, maintainability: 1.1 },
-
-  // F. Security / Compliance
-  'auth-security': { security: 1.4, maintainability: 1.2, performance: 1.1 },
-  'permissions-rbac-ux': { security: 1.3, ux: 1.2, maintainability: 1.1 },
-  'security-hardening': { security: 1.4, performance: 1.1, maintainability: 1.1 },
-  'privacy-compliance': { security: 1.3, maintainability: 1.2, feature_richness: 1.1 },
-  'fraud-abuse-prevention': { security: 1.4, scalability: 1.2, performance: 1.1 },
-
-  // G. Observability / Ops
-  'observability': { maintainability: 1.3, performance: 1.2, security: 1.1 },
-  'logging-tracing-metrics': { maintainability: 1.3, performance: 1.2, scalability: 1.1 },
-  'error-monitoring': { maintainability: 1.3, security: 1.2, ux: 1.1 },
-  'alerting-incident-response': { maintainability: 1.3, scalability: 1.2, security: 1.1 },
-
-  // H. Delivery / Quality / DevEx
-  'testing-strategy': { maintainability: 1.3, security: 1.2, performance: 1.1 },
-  'ci-cd-release': { maintainability: 1.3, scalability: 1.2, performance: 1.1 },
-  'devex-tooling': { maintainability: 1.3, performance: 1.2, feature_richness: 1.1 },
-  'documentation-sop': { maintainability: 1.3, feature_richness: 1.1, ux: 1.1 },
-  'code-quality-linting': { maintainability: 1.3, security: 1.2, performance: 1.1 },
-  'dependency-management': { maintainability: 1.3, security: 1.2, scalability: 1.1 },
-
-  // I. Performance / Cost
-  'performance-web-vitals': { performance: 1.4, ux: 1.2, scalability: 1.1 },
-  'backend-performance': { performance: 1.4, scalability: 1.2, maintainability: 1.1 },
-  'cost-optimization': { performance: 1.3, scalability: 1.2, maintainability: 1.1 },
-
-  // J. AI Engineering
-  'ai-model-serving': { performance: 1.3, scalability: 1.3, security: 1.1 },
-  'ai-evaluation-observability': { maintainability: 1.3, performance: 1.2, security: 1.1 },
-  'rag-vector-search': { performance: 1.3, scalability: 1.2, feature_richness: 1.1 },
-
-  // K. Business domains
-  'cross-border-ecommerce': { security: 1.3, feature_richness: 1.2, scalability: 1.1 },
-  'payments-billing': { security: 1.4, scalability: 1.2, feature_richness: 1.1 },
-  'marketplace-platform': { scalability: 1.3, feature_richness: 1.2, security: 1.1 },
-};
+/** Default base effort when not provided by AI agent */
+const DEFAULT_BASE_EFFORT_HOURS = 2.0;
 
 // ---------------------------------------------------------------------------
 // computeCompositeScore — pure function
@@ -204,11 +142,13 @@ export function computeCompositeScore(
 /**
  * Compute the full 7-dimension impact score for a detection + verification pair.
  *
- * - Generates dimension scores based on the detection's domain and confidence
+ * Scoring strategy:
+ * - If AI agent provides `dimensionHints`, use those as dimension scores
+ * - Otherwise, derive scores from confidence level (uniform across dimensions)
  * - Computes composite score using provided or default weights
  * - Applies priority domain boost (1.2x, capped at 10) if domain is in priorityFocusAreas
  * - Derives migrationRisk from confidence and verification status
- * - Estimates effort in developer-hours
+ * - Estimates effort using AI agent's baseEffortHours if provided, or line-count heuristic
  *
  * Requirements: 3.1, 3.2, 3.3, 3.4, 5.2
  */
@@ -216,7 +156,7 @@ export function computeImpactScore(input: ScoringInput): ScoringOutput {
   const { detection, verification, weights, priorityFocusAreas } = input;
 
   // --- Step 1: Generate dimension scores ---
-  const dimensionScores = generateDimensionScores(detection);
+  const dimensionScores = generateDimensionScores(detection, input.dimensionHints);
 
   // --- Step 2: Build weights map ---
   const effectiveWeights: Record<string, number> = {};
@@ -228,15 +168,17 @@ export function computeImpactScore(input: ScoringInput): ScoringOutput {
   let composite = computeCompositeScore(dimensionScores, effectiveWeights);
 
   // --- Step 4: Apply priority domain boost ---
+  const priorityBoost = input.config?.priorityBoost ?? DEFAULT_PRIORITY_BOOST;
+  const maxComposite = input.config?.maxComposite ?? DEFAULT_MAX_COMPOSITE;
   if (priorityFocusAreas && priorityFocusAreas.includes(detection.domain)) {
-    composite = Math.round(Math.min(composite * PRIORITY_BOOST, MAX_COMPOSITE) * 10) / 10;
+    composite = Math.round(Math.min(composite * priorityBoost, maxComposite) * 10) / 10;
   }
 
   // --- Step 5: Derive migration risk ---
   const migrationRisk = deriveMigrationRisk(detection.confidenceScore, verification.status);
 
   // --- Step 6: Estimate effort ---
-  const estimatedEffort = estimateEffort(detection, migrationRisk);
+  const estimatedEffort = estimateEffort(detection, migrationRisk, input.config, input.baseEffortHours);
 
   return {
     scores: {
@@ -259,24 +201,34 @@ export function computeImpactScore(input: ScoringInput): ScoringOutput {
 // ---------------------------------------------------------------------------
 
 /**
- * Generate dimension scores (1–10 integers) based on the detection's domain
- * and confidence score. Uses domain affinity to boost relevant dimensions.
+ * Generate dimension scores (1–10 integers) based on:
+ * - AI agent-provided dimension hints (if available), OR
+ * - Confidence-based uniform scores (default fallback)
+ *
+ * When no hints are provided, all dimensions get the same base score derived
+ * from the detection's confidence level. The AI agent can provide more
+ * nuanced per-dimension scores based on its understanding of the code.
  */
-function generateDimensionScores(detection: Detection): Record<string, number> {
-  const { domain, confidenceScore } = detection;
-  const affinity = DOMAIN_DIMENSION_AFFINITY[domain] ?? {};
+function generateDimensionScores(
+  detection: Detection,
+  dimensionHints?: Partial<Record<string, number>>,
+): Record<string, number> {
+  const { confidenceScore } = detection;
 
-  // Base score derived from confidence: higher confidence → higher base score
-  // Maps confidence [0, 1] to base score [3, 7]
+  // Base score derived from confidence: maps [0, 1] → [3, 7]
   const baseScore = Math.round(3 + confidenceScore * 4);
 
   const scores: Record<string, number> = {};
 
   for (const dim of DIMENSIONS) {
-    const boost = affinity[dim] ?? 1.0;
-    const raw = baseScore * boost;
-    // Clamp to [1, 10] and round to integer
-    scores[dim] = Math.max(1, Math.min(10, Math.round(raw)));
+    const hint = dimensionHints?.[dim];
+    if (hint !== undefined) {
+      // AI agent provided a score — clamp to [1, 10]
+      scores[dim] = Math.max(1, Math.min(10, Math.round(hint)));
+    } else {
+      // Default: uniform score based on confidence
+      scores[dim] = Math.max(1, Math.min(10, baseScore));
+    }
   }
 
   return scores;
@@ -302,19 +254,24 @@ function deriveMigrationRisk(
 /**
  * Estimate migration effort in developer-hours.
  *
- * Based on the size of the code range being replaced and the migration risk.
+ * Uses AI agent's baseEffortHours if provided, otherwise falls back to
+ * a simple line-count heuristic. Multiplied by risk factor.
  */
 function estimateEffort(
   detection: Detection,
   migrationRisk: 'low' | 'medium' | 'high',
+  config?: ScoringConfig,
+  baseEffortHours?: number,
 ): number {
   const lineCount = detection.lineRange.end - detection.lineRange.start + 1;
+  const perLine = config?.baseEffortPerLine ?? DEFAULT_BASE_EFFORT_PER_LINE;
+  const [lowMul, medMul, highMul] = config?.riskMultipliers ?? DEFAULT_RISK_MULTIPLIERS;
 
-  // Base effort: roughly 0.5 hours per line of code being replaced
-  const baseEffort = Math.max(1, lineCount * 0.5);
+  // Base effort: AI agent override, or simple line-count heuristic
+  const baseEffort = baseEffortHours ?? (DEFAULT_BASE_EFFORT_HOURS + lineCount * perLine);
 
   // Risk multiplier
-  const riskMultiplier = migrationRisk === 'low' ? 1.0 : migrationRisk === 'medium' ? 1.5 : 2.5;
+  const riskMultiplier = migrationRisk === 'low' ? lowMul : migrationRisk === 'medium' ? medMul : highMul;
 
   return Math.round(baseEffort * riskMultiplier * 10) / 10;
 }

@@ -1,12 +1,13 @@
 /**
  * Next-Unicorn SKILL — Analyze and Recommend Third-Party Optimizations
  *
- * Scans codebases and recommends replacing hand-rolled implementations
- * with battle-tested third-party libraries.
+ * Scans codebases and identifies hand-rolled implementations that could be
+ * replaced by third-party libraries. Library recommendations are provided
+ * by the caller (AI agent or programmatic client) — NOT hardcoded.
  *
  * This is the orchestrator that wires the full pipeline:
- * validate input → scan → verify → score → plan → audit → filter →
- * vuln scan → auto-update → serialize → PR creation
+ * validate input → scan → recommend (caller) → verify → score → plan →
+ * audit → filter → vuln scan → auto-update → serialize → PR creation
  */
 
 import { ZodError } from 'zod';
@@ -17,8 +18,7 @@ import {
   type VulnReport,
   type UpdatePlan,
 } from './schemas/output.schema.js';
-import { scanCodebase } from './analyzer/scanner.js';
-import { getPatternCatalog } from './analyzer/pattern-catalog.js';
+import { scanCodebase, type Detection, type ScanResult } from './analyzer/scanner.js';
 import {
   verifyAllRecommendations,
   type Context7Client,
@@ -55,17 +55,45 @@ import type { GitOperations } from './pr-creator/git-operations.js';
 // Version
 // ---------------------------------------------------------------------------
 
-export const VERSION = '2.0.0';
+export const VERSION = '1.0.1';
 
 // ---------------------------------------------------------------------------
 // Public interfaces
 // ---------------------------------------------------------------------------
+
+/**
+ * A library recommendation provided by the AI agent (or caller).
+ * The scanner detects WHAT is hand-rolled; the recommender decides WHAT to use.
+ */
+export interface LibraryRecommendation {
+  /** Library name (e.g., "zustand", "@tanstack/react-query") */
+  library: string;
+  /** Version constraint (e.g., "^5.0.0") */
+  version: string;
+  /** SPDX license identifier (e.g., "MIT") */
+  license: string;
+}
+
+/**
+ * Function that provides library recommendations for detections.
+ * Called once per detection. Return null to skip a detection (no recommendation).
+ *
+ * In AI agent mode: the agent fills this based on its knowledge + Context7.
+ * In programmatic/test mode: the caller provides a deterministic function.
+ */
+export type Recommender = (detection: Detection) => LibraryRecommendation | null;
 
 export interface AnalyzeOptions {
   /** Raw input to be validated against InputSchema */
   input: unknown;
   /** Injected Context7 client for testability — no real HTTP calls in tests */
   context7Client: Context7Client;
+  /**
+   * Recommender function: maps each detection to a library recommendation.
+   * This is the key integration point for AI agents — the agent decides
+   * which library best fits each detected pattern based on project context.
+   */
+  recommender: Recommender;
   /** Optional — if provided, enables vulnerability scanning */
   vulnClient?: VulnerabilityClient;
   /** Optional — if provided, enables auto-update recommendations */
@@ -82,6 +110,8 @@ export type AnalyzeResult =
   | {
       success: true;
       output: OutputSchema;
+      /** Raw scan result (detections + workspaces) for AI agent further analysis */
+      scanResult: ScanResult;
       json: string;
       prettyJson: string;
       exclusions: ExclusionRecord[];
@@ -100,11 +130,14 @@ export type { Context7Client, VerificationResult } from './verifier/context7.js'
 export type { ExclusionRecord } from './utils/constraint-filter.js';
 export type { InputSchema } from './schemas/input.schema.js';
 export type { OutputSchema } from './schemas/output.schema.js';
+export type { Detection, ScanResult } from './analyzer/scanner.js';
 export type { VulnerabilityClient } from './security/osv-client.js';
 export type { RegistryClient } from './updater/registry-client.js';
 export type { PlatformClient } from './pr-creator/platform-client.js';
 export type { GitOperations } from './pr-creator/git-operations.js';
 export type { PeerDependencyResolver } from './checker/peer-dependency-checker.js';
+export { scanCodebase } from './analyzer/scanner.js';
+export { getPatternCatalog } from './analyzer/pattern-catalog.js';
 
 // ---------------------------------------------------------------------------
 // analyze — main orchestrator
@@ -116,7 +149,8 @@ export type { PeerDependencyResolver } from './checker/peer-dependency-checker.j
  * Pipeline steps:
  * 1.  Validate input with InputSchema Zod schema
  * 2.  Scan codebase with scanCodebase
- * 3.  Verify all detections with Context7
+ * 2.5 Get library recommendations from the recommender (AI agent / caller)
+ * 3.  Verify recommendations with Context7
  * 4.  Score each detection
  * 5.  Build RecommendedChange objects
  * 6.  Apply dependency conflict detection
@@ -128,11 +162,9 @@ export type { PeerDependencyResolver } from './checker/peer-dependency-checker.j
  * 11. Assemble OutputSchema, serialize
  * 12. PR auto-creation (optional — Phase 2)
  * 13. Return result
- *
- * Requirements: 1.1, 7.3, 10.*, 11.*, 12.*
  */
 export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
-  const { input, context7Client } = options;
+  const { input, context7Client, recommender } = options;
 
   // -------------------------------------------------------------------------
   // Step 1: Validate input
@@ -160,58 +192,67 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
   const scanResult = await scanCodebase(validatedInput);
 
   // -------------------------------------------------------------------------
-  // Step 3: Verify all detections with Context7
+  // Step 2.5: Get library recommendations from the recommender
   // -------------------------------------------------------------------------
+  const libraryRecs = scanResult.detections.map((detection) => recommender(detection));
+
+  // -------------------------------------------------------------------------
+  // Step 3: Verify recommendations with Context7
+  // -------------------------------------------------------------------------
+  const verificationItems = scanResult.detections.map((detection, i) => {
+    const rec = libraryRecs[i];
+    return rec
+      ? { libraryName: rec.library, useCase: detection.patternCategory }
+      : null;
+  });
   const verificationMap = await verifyAllRecommendations(
     context7Client,
-    scanResult.detections,
+    verificationItems,
   );
 
   // -------------------------------------------------------------------------
   // Step 4 & 5: Score each detection and build RecommendedChange objects
   // -------------------------------------------------------------------------
-  const catalog = getPatternCatalog();
-  const catalogMap = new Map(catalog.map((p) => [p.id, p]));
+  const recommendations: RecommendedChange[] = [];
 
-  const recommendations: RecommendedChange[] = scanResult.detections.map(
-    (detection, index) => {
-      const verification = verificationMap.get(index) ?? {
-        status: 'unavailable' as const,
-        note: 'No verification result available',
-      };
+  for (let i = 0; i < scanResult.detections.length; i++) {
+    const detection = scanResult.detections[i]!;
+    const rec = libraryRecs[i];
+    if (!rec) continue; // Skip detections without recommendations
 
-      const scoringOutput = computeImpactScore({
-        detection,
-        verification,
-        weights: validatedInput.impactWeights,
-        priorityFocusAreas: validatedInput.priorityFocusAreas,
-      });
+    const verification = verificationMap.get(i) ?? {
+      status: 'unavailable' as const,
+      note: 'No verification result available',
+    };
 
-      // Look up the pattern definition for version and license info
-      const patternDef = catalogMap.get(detection.patternCategory);
+    const scoringOutput = computeImpactScore({
+      detection,
+      verification,
+      weights: validatedInput.impactWeights,
+      priorityFocusAreas: validatedInput.priorityFocusAreas,
+    });
 
-      return {
-        currentImplementation: {
-          filePath: detection.filePath,
-          lineRange: detection.lineRange,
-          patternCategory: detection.patternCategory,
-          confidenceScore: detection.confidenceScore,
-        },
-        recommendedLibrary: {
-          name: detection.suggestedLibrary,
-          version: patternDef?.suggestedVersion ?? 'latest',
-          license: patternDef?.license ?? 'MIT',
-          documentationUrl: verification.documentationUrl,
-        },
-        domain: detection.domain,
-        impactScores: scoringOutput.scores,
-        migrationRisk: scoringOutput.migrationRisk,
-        estimatedEffort: scoringOutput.estimatedEffort,
-        verificationStatus: verification.status,
-        verificationNote: verification.note,
-      };
-    },
-  );
+    recommendations.push({
+      currentImplementation: {
+        filePath: detection.filePath,
+        lineRange: detection.lineRange,
+        patternCategory: detection.patternCategory,
+        confidenceScore: detection.confidenceScore,
+      },
+      recommendedLibrary: {
+        name: rec.library,
+        version: rec.version,
+        license: rec.license,
+        documentationUrl: verification.documentationUrl,
+      },
+      domain: detection.domain,
+      impactScores: scoringOutput.scores,
+      migrationRisk: scoringOutput.migrationRisk,
+      estimatedEffort: scoringOutput.estimatedEffort,
+      verificationStatus: verification.status,
+      verificationNote: verification.note,
+    });
+  }
 
   // -------------------------------------------------------------------------
   // Step 6: Apply dependency conflict detection
@@ -439,6 +480,7 @@ export async function analyze(options: AnalyzeOptions): Promise<AnalyzeResult> {
   return {
     success: true,
     output,
+    scanResult,
     json,
     prettyJson,
     exclusions,

@@ -3,9 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { analyze, VERSION } from '../src/index.js';
+import type { Recommender, LibraryRecommendation } from '../src/index.js';
 import type { Context7Client } from '../src/verifier/context7.js';
 import { OutputSchema } from '../src/schemas/output.schema.js';
 import type { InputSchema } from '../src/schemas/input.schema.js';
+import type { Detection } from '../src/analyzer/scanner.js';
 import type { PeerDependencyResolver } from '../src/checker/peer-dependency-checker.js';
 
 // ---------------------------------------------------------------------------
@@ -36,6 +38,43 @@ function makeMockContext7Client(): Context7Client {
       version: '1.0.0',
     }),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Mock recommender — simulates what an AI agent would do
+// ---------------------------------------------------------------------------
+
+/**
+ * Default mock recommender: recommends a test library for every detection.
+ * In real usage, the AI agent would use its knowledge to recommend the best
+ * library for each detection's domain and project context.
+ */
+function makeMockRecommender(
+  overrides?: Partial<LibraryRecommendation>,
+): Recommender {
+  return (_detection: Detection) => ({
+    library: overrides?.library ?? 'test-library',
+    version: overrides?.version ?? '^1.0.0',
+    license: overrides?.license ?? 'MIT',
+  });
+}
+
+/**
+ * Domain-aware mock recommender for more realistic testing.
+ */
+function makeDomainRecommender(): Recommender {
+  const domainLibraries: Record<string, LibraryRecommendation> = {
+    'i18n': { library: '@lingui/core', version: '^4.0.0', license: 'MIT' },
+    'seo': { library: 'next-seo', version: '^6.0.0', license: 'MIT' },
+    'growth-hacking': { library: 'posthog-js', version: '^1.100.0', license: 'MIT' },
+    'observability': { library: 'pino', version: '^9.0.0', license: 'MIT' },
+    'auth-security': { library: 'jose', version: '^5.0.0', license: 'MIT' },
+    'state-management': { library: 'zustand', version: '^5.0.0', license: 'MIT' },
+    'error-handling-resilience': { library: 'react-error-boundary', version: '^4.0.0', license: 'MIT' },
+    'database-orm-migrations': { library: 'drizzle-orm', version: '^0.35.0', license: 'Apache-2.0' },
+  };
+  return (detection: Detection) =>
+    domainLibraries[detection.domain] ?? { library: `lib-for-${detection.domain}`, version: '^1.0.0', license: 'MIT' };
 }
 
 // ---------------------------------------------------------------------------
@@ -78,7 +117,7 @@ afterEach(() => {
 
 describe('VERSION export', () => {
   it('still exports VERSION alongside the orchestrator', () => {
-    expect(VERSION).toBe('2.0.0');
+    expect(VERSION).toBe('1.0.1');
   });
 });
 
@@ -107,6 +146,7 @@ describe('analyze — end-to-end success', () => {
     const result = await analyze({
       input: makeValidInput(),
       context7Client: makeMockContext7Client(),
+      recommender: makeDomainRecommender(),
     });
 
     expect(result.success).toBe(true);
@@ -130,6 +170,10 @@ describe('analyze — end-to-end success', () => {
     // JSON should be parseable back
     const reparsed = JSON.parse(result.json);
     expect(reparsed.recommendedChanges).toBeDefined();
+
+    // scanResult should be included for AI agent further analysis
+    expect(result.scanResult).toBeDefined();
+    expect(result.scanResult.detections.length).toBeGreaterThan(0);
   });
 
   it('output matches OutputSchema Zod validation', async () => {
@@ -140,6 +184,7 @@ describe('analyze — end-to-end success', () => {
     const result = await analyze({
       input: makeValidInput(),
       context7Client: makeMockContext7Client(),
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(true);
@@ -162,6 +207,7 @@ describe('analyze — end-to-end success', () => {
     const result = await analyze({
       input: makeValidInput(),
       context7Client: makeMockContext7Client(),
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(true);
@@ -187,6 +233,7 @@ describe('analyze — end-to-end success', () => {
     const result = await analyze({
       input: makeValidInput(),
       context7Client: makeMockContext7Client(),
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(true);
@@ -195,6 +242,27 @@ describe('analyze — end-to-end success', () => {
     for (const rec of result.output.recommendedChanges) {
       expect(['verified', 'unverified', 'unavailable']).toContain(rec.verificationStatus);
     }
+  });
+
+  it('recommender returning null skips that detection', async () => {
+    writeFile('src/utils.ts', `
+      function formatCount(count: number) {
+        return count === 1 ? 'item' : 'items';
+      }
+    `);
+
+    // Recommender that rejects all detections
+    const result = await analyze({
+      input: makeValidInput(),
+      context7Client: makeMockContext7Client(),
+      recommender: () => null,
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    // No recommendations because recommender returned null for all
+    expect(result.output.recommendedChanges).toEqual([]);
   });
 });
 
@@ -207,6 +275,7 @@ describe('analyze — invalid input', () => {
     const result = await analyze({
       input: { invalid: true },
       context7Client: makeMockContext7Client(),
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(false);
@@ -224,6 +293,7 @@ describe('analyze — invalid input', () => {
         constraints: { licenseAllowlist: [], excludedLibraries: [] },
       },
       context7Client: makeMockContext7Client(),
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(false);
@@ -245,6 +315,7 @@ describe('analyze — invalid input', () => {
         constraints: { licenseAllowlist: [], excludedLibraries: [] },
       },
       context7Client: makeMockContext7Client(),
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(false);
@@ -257,6 +328,7 @@ describe('analyze — invalid input', () => {
     const result = await analyze({
       input: null,
       context7Client: makeMockContext7Client(),
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(false);
@@ -275,6 +347,7 @@ describe('analyze — empty codebase', () => {
     const result = await analyze({
       input: makeValidInput(),
       context7Client: makeMockContext7Client(),
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(true);
@@ -295,6 +368,7 @@ describe('analyze — empty codebase', () => {
     const result = await analyze({
       input: makeValidInput(),
       context7Client: makeMockContext7Client(),
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(true);
@@ -319,11 +393,13 @@ describe('analyze — license filtering', () => {
     const result = await analyze({
       input: makeValidInput({
         constraints: {
-          licenseAllowlist: ['Apache-2.0'], // i18next is MIT, should be excluded
+          licenseAllowlist: ['Apache-2.0'], // MIT recommendations should be excluded
           excludedLibraries: [],
         },
       }),
       context7Client: makeMockContext7Client(),
+      // Recommender returns MIT-licensed library → should be filtered out
+      recommender: makeMockRecommender({ license: 'MIT' }),
     });
 
     expect(result.success).toBe(true);
@@ -348,6 +424,7 @@ describe('analyze — license filtering', () => {
     const result = await analyze({
       input: makeValidInput(),
       context7Client: makeMockContext7Client(),
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(true);
@@ -377,6 +454,7 @@ describe('analyze — Context7 client behavior', () => {
     const result = await analyze({
       input: makeValidInput(),
       context7Client: client,
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(true);
@@ -406,6 +484,7 @@ describe('analyze — Context7 client behavior', () => {
     const result = await analyze({
       input: makeValidInput(),
       context7Client: client,
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(true);
@@ -419,6 +498,31 @@ describe('analyze — Context7 client behavior', () => {
     // Output should still be valid
     const parsed = OutputSchema.safeParse(result.output);
     expect(parsed.success).toBe(true);
+  });
+
+  it('handles Context7 returning null (library not found)', async () => {
+    writeFile('src/app.ts', `
+      console.log('server started');
+    `);
+
+    const failingClient: Context7Client = {
+      resolveLibraryId: async () => null,
+      getLibraryDocs: async () => null,
+    };
+
+    const result = await analyze({
+      input: makeValidInput(),
+      context7Client: failingClient,
+      recommender: makeMockRecommender(),
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    // Recommendations should still be generated but unverified
+    for (const rec of result.output.recommendedChanges) {
+      expect(rec.verificationStatus).toBe('unverified');
+    }
   });
 });
 
@@ -442,6 +546,7 @@ describe('analyze — migration plan', () => {
     const result = await analyze({
       input: makeValidInput(),
       context7Client: makeMockContext7Client(),
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(true);
@@ -469,6 +574,7 @@ describe('analyze — serialization', () => {
     const result = await analyze({
       input: makeValidInput(),
       context7Client: makeMockContext7Client(),
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(true);
@@ -486,6 +592,7 @@ describe('analyze — serialization', () => {
     const result = await analyze({
       input: makeValidInput(),
       context7Client: makeMockContext7Client(),
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(true);
@@ -503,7 +610,6 @@ describe('analyze — serialization', () => {
 
 describe('analyze — peer dependency warnings', () => {
   it('includes warnings in output when peerDependencyResolver returns peer deps', async () => {
-    // Write files that trigger detections (i18n pattern → i18next recommendation)
     writeFile('package.json', JSON.stringify({
       name: 'test-app',
       dependencies: { react: '^18.0.0' },
@@ -535,6 +641,7 @@ describe('analyze — peer dependency warnings', () => {
         },
       }),
       context7Client: makeMockContext7Client(),
+      recommender: makeMockRecommender(),
       peerDependencyResolver: mockResolver,
     });
 
@@ -579,7 +686,6 @@ describe('analyze — peer dependency warnings', () => {
   });
 
   it('returns empty peerDependencyWarnings when no resolver is provided', async () => {
-    // Write files that trigger detections
     writeFile('src/utils.ts', `
       function formatCount(count: number) {
         return count === 1 ? 'item' : 'items';
@@ -589,7 +695,7 @@ describe('analyze — peer dependency warnings', () => {
     const result = await analyze({
       input: makeValidInput(),
       context7Client: makeMockContext7Client(),
-      // No peerDependencyResolver provided — should default to no-op
+      recommender: makeMockRecommender(),
     });
 
     expect(result.success).toBe(true);
@@ -602,5 +708,42 @@ describe('analyze — peer dependency warnings', () => {
     const parsed = OutputSchema.safeParse(result.output);
     expect(parsed.success).toBe(true);
   });
-});
 
+  it('detects new domain patterns (state-management, error-handling, etc.)', async () => {
+    // Error boundary
+    writeFile('src/ErrorBoundary.tsx', `
+      class AppErrorBoundary extends React.Component {
+        componentDidCatch(error, info) {
+          logErrorToService(error, info);
+        }
+        getDerivedStateFromError(error) {
+          return { hasError: true };
+        }
+        render() {
+          return this.state.hasError ? <Fallback /> : this.props.children;
+        }
+      }
+    `);
+
+    // Raw SQL
+    writeFile('src/db.ts', [
+      "async function getUsers(role: string) {",
+      "  const q = `SELECT * FROM users WHERE role = ${role}`;",
+      "  return db.query(q);",
+      "}",
+    ].join('\n'));
+
+    const result = await analyze({
+      input: makeValidInput(),
+      context7Client: makeMockContext7Client(),
+      recommender: makeDomainRecommender(),
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    const domains = new Set(result.output.recommendedChanges.map(r => r.domain));
+    expect(domains.has('error-handling-resilience')).toBe(true);
+    expect(domains.has('database-orm-migrations')).toBe(true);
+  });
+});

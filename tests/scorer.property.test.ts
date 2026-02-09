@@ -104,7 +104,7 @@ const verificationStatusArb = fc.constantFrom(
   'unavailable' as const,
 );
 
-/** A Detection arbitrary */
+/** A Detection arbitrary (no suggestedLibrary — AI agent provides recommendations) */
 const detectionArb: fc.Arbitrary<Detection> = fc.record({
   filePath: safeString,
   lineRange: fc.record({
@@ -113,7 +113,6 @@ const detectionArb: fc.Arbitrary<Detection> = fc.record({
   }).filter((lr) => lr.start <= lr.end),
   patternCategory: safeString,
   confidenceScore: confidenceArb,
-  suggestedLibrary: safeString,
   domain: domainArb as fc.Arbitrary<string>,
 });
 

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import fsPromises from 'node:fs/promises';
 import path from 'node:path';
 import type { InputSchema } from '../schemas/input.schema.js';
 import { getPatternCatalog, type PatternDefinition } from './pattern-catalog.js';
@@ -12,7 +13,6 @@ export interface Detection {
   lineRange: { start: number; end: number };
   patternCategory: string;
   confidenceScore: number;
-  suggestedLibrary: string;
   domain: string;
 }
 
@@ -123,6 +123,12 @@ const MANIFEST_TYPES: ManifestInfo[] = [
 // File-tree walking utilities
 // ---------------------------------------------------------------------------
 
+/** File extensions that are scannable source code */
+const SOURCE_EXTENSIONS = new Set([
+  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+  '.py', '.rs', '.go', '.java', '.sql', '.xml',
+]);
+
 /** Directories to always skip when walking the file tree */
 const SKIP_DIRS = new Set([
   'node_modules',
@@ -196,61 +202,6 @@ function matchesFilePattern(filePath: string, patterns: string[]): boolean {
   return false;
 }
 
-// ---------------------------------------------------------------------------
-// Workspace detection
-// ---------------------------------------------------------------------------
-
-/**
- * Detect workspace roots by scanning for manifest files.
- * For monorepos, each directory containing a manifest is a workspace root.
- */
-function detectWorkspaces(repoPath: string): WorkspaceScan[] {
-  const workspaces: WorkspaceScan[] = [];
-  const visited = new Set<string>();
-
-  for (const filePath of walkDir(repoPath)) {
-    const dir = path.dirname(filePath);
-    const basename = path.basename(filePath);
-
-    for (const manifest of MANIFEST_TYPES) {
-      if (basename === manifest.file && !visited.has(`${dir}:${manifest.file}`)) {
-        visited.add(`${dir}:${manifest.file}`);
-        let content: string;
-        try {
-          content = fs.readFileSync(filePath, 'utf-8');
-        } catch {
-          continue;
-        }
-
-        // Detect actual package manager from lockfiles
-        let packageManager = manifest.packageManager;
-        if (manifest.file === 'package.json') {
-          packageManager = detectNodePackageManager(dir);
-        }
-
-        workspaces.push({
-          root: path.relative(repoPath, dir) || '.',
-          packageManager,
-          language: manifest.language,
-          dependencies: manifest.parseDeps(content),
-        });
-      }
-    }
-  }
-
-  // If no workspaces found, create a root workspace from input metadata
-  if (workspaces.length === 0) {
-    workspaces.push({
-      root: '.',
-      packageManager: 'unknown',
-      language: 'unknown',
-      dependencies: {},
-    });
-  }
-
-  return workspaces;
-}
-
 /**
  * Detect the Node.js package manager by checking for lockfiles.
  */
@@ -275,16 +226,17 @@ function fileExists(filePath: string): boolean {
 
 /**
  * Scan a single file's content against the pattern catalog.
+ * Uses async I/O to avoid blocking the event loop on large repos.
  * Returns detections for each pattern match found.
  */
-function scanFile(
+async function scanFile(
   filePath: string,
   relativeFilePath: string,
   catalog: PatternDefinition[],
-): Detection[] {
+): Promise<Detection[]> {
   let content: string;
   try {
-    content = fs.readFileSync(filePath, 'utf-8');
+    content = await fsPromises.readFile(filePath, 'utf-8');
   } catch {
     // Unreadable file (binary, permissions) — skip
     return [];
@@ -306,16 +258,16 @@ function scanFile(
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         if (line !== undefined && regex.test(line)) {
-          // Determine the line range — include surrounding context
-          const start = i + 1; // 1-indexed
-          const end = Math.min(i + 1, lines.length); // at least the matched line
+          // Determine the line range — include surrounding context (±5 lines)
+          const contextRadius = 5;
+          const start = Math.max(1, i + 1 - contextRadius); // 1-indexed
+          const end = Math.min(lines.length, i + 1 + contextRadius);
 
           detections.push({
             filePath: relativeFilePath,
             lineRange: { start, end },
             patternCategory: pattern.id,
             confidenceScore: pattern.confidenceBase,
-            suggestedLibrary: pattern.suggestedLibrary,
             domain: pattern.domain,
           });
 
@@ -352,16 +304,71 @@ export async function scanCodebase(input: InputSchema): Promise<ScanResult> {
 
   const catalog = getPatternCatalog();
 
-  // Detect workspaces (monorepo support)
-  const workspaces = detectWorkspaces(repoPath);
-
-  // Walk the file tree and scan each source file
-  const detections: Detection[] = [];
+  // ── Single-pass traversal: detect workspaces AND collect source files ──
+  const workspaces: WorkspaceScan[] = [];
+  const visitedManifests = new Set<string>();
+  const sourceFiles: { filePath: string; relativeFilePath: string }[] = [];
 
   for (const filePath of walkDir(repoPath)) {
-    const relativeFilePath = path.relative(repoPath, filePath);
-    const fileDetections = scanFile(filePath, relativeFilePath, catalog);
-    detections.push(...fileDetections);
+    const basename = path.basename(filePath);
+    const dir = path.dirname(filePath);
+    const ext = path.extname(filePath);
+
+    // Workspace detection: check if this is a manifest file
+    for (const manifest of MANIFEST_TYPES) {
+      const key = `${dir}:${manifest.file}`;
+      if (basename === manifest.file && !visitedManifests.has(key)) {
+        visitedManifests.add(key);
+        let content: string;
+        try {
+          content = fs.readFileSync(filePath, 'utf-8');
+        } catch {
+          continue;
+        }
+        let packageManager = manifest.packageManager;
+        if (manifest.file === 'package.json') {
+          packageManager = detectNodePackageManager(dir);
+        }
+        workspaces.push({
+          root: path.relative(repoPath, dir) || '.',
+          packageManager,
+          language: manifest.language,
+          dependencies: manifest.parseDeps(content),
+        });
+      }
+    }
+
+    // Collect source files for scanning
+    if (SOURCE_EXTENSIONS.has(ext)) {
+      sourceFiles.push({
+        filePath,
+        relativeFilePath: path.relative(repoPath, filePath),
+      });
+    }
+  }
+
+  // Default workspace if none detected
+  if (workspaces.length === 0) {
+    workspaces.push({
+      root: '.',
+      packageManager: 'unknown',
+      language: 'unknown',
+      dependencies: {},
+    });
+  }
+
+  // ── Scan source files with async I/O (batched for throughput) ──
+  const BATCH_SIZE = 50;
+  const detections: Detection[] = [];
+
+  for (let i = 0; i < sourceFiles.length; i += BATCH_SIZE) {
+    const batch = sourceFiles.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map((f) => scanFile(f.filePath, f.relativeFilePath, catalog)),
+    );
+    for (const result of batchResults) {
+      detections.push(...result);
+    }
   }
 
   return { detections, workspaces };

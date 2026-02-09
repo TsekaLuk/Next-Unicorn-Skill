@@ -31,16 +31,12 @@ const confidenceScoreArb = fc.double({ min: 0, max: 1, noNaN: true, noDefaultInf
 /** Valid VibeCodingDomain value */
 const domainArb = fc.constantFrom(...VALID_DOMAINS);
 
-/** Non-empty library name */
-const libraryNameArb = fc.stringMatching(/^[a-zA-Z0-9@/_-]{1,40}$/).filter((s) => s.length > 0);
-
-/** Full Detection arbitrary */
+/** Full Detection arbitrary (no suggestedLibrary — AI agent provides recommendations) */
 const detectionArb: fc.Arbitrary<Detection> = fc.record({
   filePath: filePathArb,
   lineRange: lineRangeArb,
   patternCategory: patternCategoryArb,
   confidenceScore: confidenceScoreArb,
-  suggestedLibrary: libraryNameArb,
   domain: domainArb,
 });
 

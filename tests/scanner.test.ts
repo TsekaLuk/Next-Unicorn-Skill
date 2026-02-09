@@ -101,6 +101,18 @@ describe('Pattern catalog', () => {
       expect(p.confidenceBase).toBeLessThanOrEqual(1);
     }
   });
+
+  it('patterns contain NO hardcoded library recommendations', () => {
+    const catalog = getPatternCatalog();
+    for (const p of catalog) {
+      // PatternDefinition should only have detection fields
+      expect(p).not.toHaveProperty('suggestedLibrary');
+      expect(p).not.toHaveProperty('suggestedVersion');
+      expect(p).not.toHaveProperty('license');
+      expect(p).not.toHaveProperty('bestPractice');
+      expect(p).not.toHaveProperty('alternatives');
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -120,7 +132,7 @@ describe('Scanner — code pattern matching', () => {
     const i18nDetections = result.detections.filter((d) => d.domain === 'i18n');
     expect(i18nDetections.length).toBeGreaterThanOrEqual(1);
     expect(i18nDetections[0]!.patternCategory).toBe('i18n-manual-pluralization');
-    expect(i18nDetections[0]!.suggestedLibrary).toBe('i18next');
+    // Detection no longer contains suggestedLibrary — that's the AI agent's job
   });
 
   it('detects hand-rolled meta tag injection (seo domain)', async () => {
@@ -134,7 +146,7 @@ describe('Scanner — code pattern matching', () => {
 
     const seoDetections = result.detections.filter((d) => d.domain === 'seo');
     expect(seoDetections.length).toBeGreaterThanOrEqual(1);
-    expect(seoDetections[0]!.suggestedLibrary).toBe('next-seo');
+    expect(seoDetections[0]!.patternCategory).toBe('seo-manual-meta-tags');
   });
 
   it('detects hand-rolled A/B testing (growth-hacking domain)', async () => {
@@ -146,7 +158,7 @@ describe('Scanner — code pattern matching', () => {
 
     const growthDetections = result.detections.filter((d) => d.domain === 'growth-hacking');
     expect(growthDetections.length).toBeGreaterThanOrEqual(1);
-    expect(growthDetections[0]!.suggestedLibrary).toBe('posthog-js');
+    expect(growthDetections[0]!.patternCategory).toBe('growth-manual-ab-test');
   });
 
   it('detects hand-rolled JWT handling (auth-security domain)', async () => {
@@ -158,7 +170,7 @@ describe('Scanner — code pattern matching', () => {
 
     const authDetections = result.detections.filter((d) => d.domain === 'auth-security');
     expect(authDetections.length).toBeGreaterThanOrEqual(1);
-    expect(authDetections[0]!.suggestedLibrary).toBe('jose');
+    expect(authDetections[0]!.patternCategory).toBe('auth-manual-jwt-handling');
   });
 
   it('detects console.log usage (observability domain)', async () => {
@@ -173,10 +185,10 @@ describe('Scanner — code pattern matching', () => {
 
     const obsDetections = result.detections.filter((d) => d.domain === 'observability');
     expect(obsDetections.length).toBeGreaterThanOrEqual(1);
-    expect(obsDetections[0]!.suggestedLibrary).toBe('pino');
+    expect(obsDetections[0]!.patternCategory).toBe('observability-manual-logging');
   });
 
-  it('produces detections with valid structure', async () => {
+  it('produces detections with valid structure (no suggestedLibrary)', async () => {
     writeFile('src/app.ts', `
       const count = items.length === 1 ? 'item' : 'items';
       console.log('Count:', count);
@@ -194,7 +206,8 @@ describe('Scanner — code pattern matching', () => {
       expect(detection.confidenceScore).toBeGreaterThanOrEqual(0);
       expect(detection.confidenceScore).toBeLessThanOrEqual(1);
       expect(detection.domain).toBeTruthy();
-      expect(detection.suggestedLibrary).toBeTruthy();
+      // No suggestedLibrary — recommendations come from the AI agent
+      expect(detection).not.toHaveProperty('suggestedLibrary');
     }
   });
 });

@@ -3,21 +3,17 @@ import {
   verifyRecommendation,
   verifyAllRecommendations,
   type Context7Client,
+  type VerificationItem,
 } from '../src/verifier/context7.js';
-import type { Detection } from '../src/analyzer/scanner.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeDetection(overrides?: Partial<Detection>): Detection {
+function makeItem(overrides?: Partial<VerificationItem>): VerificationItem {
   return {
-    filePath: 'src/utils.ts',
-    lineRange: { start: 1, end: 10 },
-    patternCategory: 'i18n-manual-pluralization',
-    confidenceScore: 0.8,
-    suggestedLibrary: 'i18next',
-    domain: 'i18n',
+    libraryName: 'i18next',
+    useCase: 'i18n-manual-pluralization',
     ...overrides,
   };
 }
@@ -202,11 +198,11 @@ describe('verifyRecommendation — service unavailability', () => {
 });
 
 // ---------------------------------------------------------------------------
-// verifyAllRecommendations
+// verifyAllRecommendations — now takes VerificationItem[] (not Detection[])
 // ---------------------------------------------------------------------------
 
 describe('verifyAllRecommendations', () => {
-  it('processes all detections and returns a result for each', async () => {
+  it('processes all items and returns a result for each', async () => {
     const client: Context7Client = {
       resolveLibraryId: async (name: string) => `ctx7/${name}`,
       getLibraryDocs: async (_id: string, _uc: string) => ({
@@ -215,13 +211,13 @@ describe('verifyAllRecommendations', () => {
       }),
     };
 
-    const detections: Detection[] = [
-      makeDetection({ suggestedLibrary: 'i18next', domain: 'i18n' }),
-      makeDetection({ suggestedLibrary: 'next-seo', domain: 'seo' }),
-      makeDetection({ suggestedLibrary: 'pino', domain: 'observability' }),
+    const items: Array<VerificationItem | null> = [
+      makeItem({ libraryName: 'i18next', useCase: 'i18n' }),
+      makeItem({ libraryName: 'next-seo', useCase: 'seo' }),
+      makeItem({ libraryName: 'pino', useCase: 'observability' }),
     ];
 
-    const results = await verifyAllRecommendations(client, detections);
+    const results = await verifyAllRecommendations(client, items);
 
     expect(results.size).toBe(3);
     expect(results.get(0)?.status).toBe('verified');
@@ -241,13 +237,13 @@ describe('verifyAllRecommendations', () => {
       }),
     };
 
-    const detections: Detection[] = [
-      makeDetection({ suggestedLibrary: 'i18next' }),
-      makeDetection({ suggestedLibrary: 'unknown-lib' }),
-      makeDetection({ suggestedLibrary: 'pino' }),
+    const items: Array<VerificationItem | null> = [
+      makeItem({ libraryName: 'i18next' }),
+      makeItem({ libraryName: 'unknown-lib' }),
+      makeItem({ libraryName: 'pino' }),
     ];
 
-    const results = await verifyAllRecommendations(client, detections);
+    const results = await verifyAllRecommendations(client, items);
 
     expect(results.size).toBe(3);
     expect(results.get(0)?.status).toBe('verified');
@@ -271,13 +267,13 @@ describe('verifyAllRecommendations', () => {
       }),
     };
 
-    const detections: Detection[] = [
-      makeDetection({ suggestedLibrary: 'i18next' }),
-      makeDetection({ suggestedLibrary: 'flaky-lib' }),
-      makeDetection({ suggestedLibrary: 'pino' }),
+    const items: Array<VerificationItem | null> = [
+      makeItem({ libraryName: 'i18next' }),
+      makeItem({ libraryName: 'flaky-lib' }),
+      makeItem({ libraryName: 'pino' }),
     ];
 
-    const results = await verifyAllRecommendations(client, detections);
+    const results = await verifyAllRecommendations(client, items);
 
     expect(results.size).toBe(3);
     expect(results.get(0)?.status).toBe('verified');
@@ -287,7 +283,33 @@ describe('verifyAllRecommendations', () => {
     expect(results.get(2)?.status).toBe('verified');
   });
 
-  it('returns empty map for empty detections array', async () => {
+  it('skips null items (detections without recommendations)', async () => {
+    const client: Context7Client = {
+      resolveLibraryId: async (name: string) => `ctx7/${name}`,
+      getLibraryDocs: async (_id: string, _uc: string) => ({
+        url: 'https://example.com/docs',
+        version: '1.0.0',
+      }),
+    };
+
+    const items: Array<VerificationItem | null> = [
+      makeItem({ libraryName: 'i18next' }),
+      null, // detection without recommendation — skipped
+      makeItem({ libraryName: 'pino' }),
+    ];
+
+    const results = await verifyAllRecommendations(client, items);
+
+    // Only 2 results — null item at index 1 was skipped
+    expect(results.size).toBe(2);
+    expect(results.has(0)).toBe(true);
+    expect(results.has(1)).toBe(false);
+    expect(results.has(2)).toBe(true);
+    expect(results.get(0)?.status).toBe('verified');
+    expect(results.get(2)?.status).toBe('verified');
+  });
+
+  it('returns empty map for empty items array', async () => {
     const client: Context7Client = {
       resolveLibraryId: async (_name: string) => 'ctx7/lib',
       getLibraryDocs: async (_id: string, _uc: string) => ({
@@ -301,7 +323,7 @@ describe('verifyAllRecommendations', () => {
     expect(results.size).toBe(0);
   });
 
-  it('passes correct library name and pattern category to client methods', async () => {
+  it('passes correct library name and use case to client methods', async () => {
     const resolveLibraryIdSpy = vi.fn(async (name: string) => `ctx7/${name}`);
     const getLibraryDocsSpy = vi.fn(async (_id: string, _uc: string) => ({
       url: 'https://example.com/docs',
@@ -313,14 +335,14 @@ describe('verifyAllRecommendations', () => {
       getLibraryDocs: getLibraryDocsSpy,
     };
 
-    const detections: Detection[] = [
-      makeDetection({
-        suggestedLibrary: 'date-fns',
-        patternCategory: 'i18n-date-formatting',
+    const items: Array<VerificationItem | null> = [
+      makeItem({
+        libraryName: 'date-fns',
+        useCase: 'i18n-date-formatting',
       }),
     ];
 
-    await verifyAllRecommendations(client, detections);
+    await verifyAllRecommendations(client, items);
 
     expect(resolveLibraryIdSpy).toHaveBeenCalledWith('date-fns');
     expect(getLibraryDocsSpy).toHaveBeenCalledWith('ctx7/date-fns', 'i18n-date-formatting');

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-02-09
+
+### Changed
+
+- **Architecture: Decouple detection from recommendation** — The pattern catalog no longer contains hardcoded library names, versions, licenses, best practices, or alternatives. Library recommendations are now provided dynamically by the caller via the `Recommender` callback, enabling AI agents to leverage their generalization ability and Context7 MCP for real-time, context-aware recommendations.
+- **New `Recommender` type** — `analyze()` now requires a `recommender: (detection) => LibraryRecommendation | null` callback. Return `null` to skip false positives.
+- **New `scanCodebase()` export** — Standalone scanner for AI agents to inspect detections before providing recommendations.
+- **UX Auditor decoupled** — `recommendedLibrary` is no longer hardcoded per category; the auditor reports status (present/partial/missing) with factual rationale, leaving library choice to the AI agent.
+- **Impact Scorer decoupled** — Removed 200+ line `DOMAIN_DIMENSION_AFFINITY` mapping and `DOMAIN_BASE_EFFORT` table. Scoring uses confidence-based defaults with optional `dimensionHints` and `baseEffortHours` overrides from the AI agent.
+- **Migration Planner decoupled** — Removed `DOMAIN_MIGRATION_PRIORITY` mapping. Sorting within each risk phase uses file co-location + composite score. AI agents can influence ordering via scoring.
+- **`Detection` type simplified** — Removed `suggestedLibrary` field. Detections now contain only what was detected (file, line range, pattern, confidence, domain).
+- **`VerificationItem` type added** — `verifyAllRecommendations()` now accepts `Array<VerificationItem | null>` instead of `Detection[]`, decoupling verification from scanner output.
+- **`AnalyzeResult` includes `scanResult`** — Success results now include raw `ScanResult` for AI agent further analysis.
+- Pattern catalog reduced from 880 to 370 lines (detection-only, no recommendation data)
+- SKILL.md rewritten to 150 lines following Anthropic SKILL spec principles (concise, high freedom for recommendations)
+- Test count increased from 191 to 198
+
+### Removed
+
+- All hardcoded library recommendations from `PatternDefinition` (`suggestedLibrary`, `suggestedVersion`, `license`, `bestPractice`, `alternatives`)
+- All hardcoded UX audit library recommendations and rationale strings
+- `DOMAIN_DIMENSION_AFFINITY` (68-domain × 7-dimension static mapping)
+- `DOMAIN_BASE_EFFORT` (25-domain effort estimate table)
+- `DOMAIN_MIGRATION_PRIORITY` (domain tier ordering)
+
 ## [2.0.0] - 2026-02-08
 
 ### Added

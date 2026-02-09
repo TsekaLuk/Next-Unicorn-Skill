@@ -1,6 +1,6 @@
 {
   "name": "@nebutra/next-unicorn-skill",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Stop Vibe Coding debt: audit your codebase, replace reinvented wheels with unicorn-grade libraries, scan vulnerabilities, auto-update deps, and auto-create PRs — all verified via Context7 MCP.",
   "type": "module",
   "main": "dist/index.js",

@@ -81,7 +81,6 @@ const detectionArb: fc.Arbitrary<Detection> = fc
     lineEnd: fc.integer({ min: 1, max: 1000 }),
     patternCategory: safeStringArb,
     confidenceScore: confidenceArb,
-    suggestedLibrary: safeStringArb,
     domain: domainArb as fc.Arbitrary<string>,
   })
   .filter((r) => r.lineStart <= r.lineEnd)
@@ -90,7 +89,6 @@ const detectionArb: fc.Arbitrary<Detection> = fc
     lineRange: { start: r.lineStart, end: r.lineEnd },
     patternCategory: r.patternCategory,
     confidenceScore: r.confidenceScore,
-    suggestedLibrary: r.suggestedLibrary,
     domain: r.domain,
   }));
 
@@ -159,16 +157,16 @@ describe('Feature: next-unicorn, Property 11: UX audit completeness', () => {
     );
   });
 
-  it('every item with status "partial" or "missing" has non-empty recommendedLibrary and rationale', () => {
+  it('every item with status "partial" or "missing" has non-empty rationale (recommendedLibrary left for AI agent)', () => {
     fc.assert(
       fc.property(scanResultArb, projectMetadataArb, (scanResult, projectMetadata) => {
         const result = auditUxCompleteness(scanResult, projectMetadata);
 
         for (const item of result.items) {
           if (item.status === 'partial' || item.status === 'missing') {
-            expect(item.recommendedLibrary).toBeDefined();
-            expect(typeof item.recommendedLibrary).toBe('string');
-            expect(item.recommendedLibrary!.length).toBeGreaterThan(0);
+            // recommendedLibrary is intentionally undefined — AI agent fills it
+            expect(item.recommendedLibrary).toBeUndefined();
+            // rationale is always present (factual description of what was found)
             expect(item.rationale.length).toBeGreaterThan(0);
           }
         }
@@ -231,8 +229,8 @@ describe('Feature: next-unicorn, Property 11: UX audit completeness', () => {
     expect(result.items).toHaveLength(8);
     for (const item of result.items) {
       expect(item.status).toBe('missing');
-      expect(item.recommendedLibrary).toBeDefined();
-      expect(item.recommendedLibrary!.length).toBeGreaterThan(0);
+      // recommendedLibrary is undefined — AI agent fills it
+      expect(item.recommendedLibrary).toBeUndefined();
       expect(item.rationale.length).toBeGreaterThan(0);
     }
   });
@@ -245,7 +243,6 @@ describe('Feature: next-unicorn, Property 11: UX audit completeness', () => {
         lineRange: { start: 10, end: 20 },
         patternCategory: 'ux-manual-form-validation',
         confidenceScore: 0.7,
-        suggestedLibrary: 'react-hook-form',
         domain: 'ux-completeness',
       },
       {
@@ -253,7 +250,6 @@ describe('Feature: next-unicorn, Property 11: UX audit completeness', () => {
         lineRange: { start: 5, end: 15 },
         patternCategory: 'ux-manual-loading-states',
         confidenceScore: 0.55,
-        suggestedLibrary: 'react-loading-skeleton',
         domain: 'ux-completeness',
       },
     ];
@@ -271,12 +267,13 @@ describe('Feature: next-unicorn, Property 11: UX audit completeness', () => {
     // Form validation and loading states should be partial (hand-rolled detected)
     const formItem = result.items.find((i) => i.category === 'form-validation');
     expect(formItem?.status).toBe('partial');
-    expect(formItem?.recommendedLibrary).toBeDefined();
+    // recommendedLibrary is undefined — AI agent fills it
+    expect(formItem?.recommendedLibrary).toBeUndefined();
     expect(formItem?.filePaths).toContain('src/components/Form.tsx');
 
     const loadingItem = result.items.find((i) => i.category === 'loading-states');
     expect(loadingItem?.status).toBe('partial');
-    expect(loadingItem?.recommendedLibrary).toBeDefined();
+    expect(loadingItem?.recommendedLibrary).toBeUndefined();
     expect(loadingItem?.filePaths).toContain('src/components/List.tsx');
   });
 

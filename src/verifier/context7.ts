@@ -1,4 +1,4 @@
-import type { Detection } from '../analyzer/scanner.js';
+// No longer depends on Detection — recommendations come from the AI agent
 
 // ---------------------------------------------------------------------------
 // Public interfaces
@@ -115,25 +115,39 @@ export async function verifyRecommendation(
 // ---------------------------------------------------------------------------
 
 /**
- * Verify all library recommendations from scanner detections.
+ * Item describing a library recommendation to verify.
+ * The libraryName and useCase come from the AI agent's recommendation,
+ * NOT from hardcoded catalog data.
+ */
+export interface VerificationItem {
+  libraryName: string;
+  useCase: string;
+}
+
+/**
+ * Verify all library recommendations provided by the AI agent (or caller).
  *
- * Processes each detection independently — a failure for one library does
+ * Each item in the array corresponds to a detection by index. Items that are
+ * `null` are skipped (detection had no recommendation from the agent).
+ *
+ * Processes each item independently — a failure for one library does
  * not affect others. Returns a Map keyed by detection index.
  *
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 9.5
  */
 export async function verifyAllRecommendations(
   client: Context7Client,
-  detections: Detection[],
+  items: Array<VerificationItem | null>,
 ): Promise<Map<number, VerificationResult>> {
   const results = new Map<number, VerificationResult>();
 
-  for (let i = 0; i < detections.length; i++) {
-    const detection = detections[i]!;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (!item) continue;
     const result = await verifyRecommendation(
       client,
-      detection.suggestedLibrary,
-      detection.patternCategory,
+      item.libraryName,
+      item.useCase,
     );
     results.set(i, result);
   }

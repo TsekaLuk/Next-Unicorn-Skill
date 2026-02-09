@@ -49,8 +49,13 @@ const RISK_PHASE_MAP: Record<string, { order: number; name: string }> = {
  * - Phase 2: medium-risk items
  * - Phase 3: high-risk items (with adapter strategies)
  *
- * Within each phase, items are ordered by composite score descending
- * (highest impact first).
+ * Within each phase, items are ordered by:
+ * 1. File co-location (related changes in the same file are adjacent)
+ * 2. Composite score descending (highest impact first within same file)
+ *
+ * Domain-specific migration priority is NOT hardcoded — the AI agent
+ * can influence ordering by adjusting composite scores or providing
+ * recommendations in a specific order.
  *
  * Only phases that have items are included (empty phases are skipped).
  *
@@ -83,9 +88,18 @@ export function buildMigrationPlan(
     groups[risk]!.push({ index: i, rec });
   }
 
-  // --- Step 2: Sort each group by composite score descending ---
+  // --- Step 2: Sort each group by file co-location → composite score ---
   for (const risk of ['low', 'medium', 'high'] as const) {
-    groups[risk]!.sort((a, b) => b.rec.impactScores.composite - a.rec.impactScores.composite);
+    groups[risk]!.sort((a, b) => {
+      // First: group by file path so related changes are adjacent
+      const fileCompare = a.rec.currentImplementation.filePath.localeCompare(
+        b.rec.currentImplementation.filePath,
+      );
+      if (fileCompare !== 0) return fileCompare;
+
+      // Second: within the same file, highest composite score first
+      return b.rec.impactScores.composite - a.rec.impactScores.composite;
+    });
   }
 
   // --- Step 3: Build phases (only non-empty groups) ---
